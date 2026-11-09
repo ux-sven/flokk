@@ -20,20 +20,15 @@ Design: Figma – _lenke kommer_
 
 ## Kom i gang
 
-1. Opprett et prosjekt på [supabase.com](https://supabase.com).
-2. Kjør migrasjonen i `supabase/migrations/` – enten i SQL-editoren i Supabase-dashbordet, eller med CLI:
-   ```bash
-   npx supabase link --project-ref <prosjekt-ref>
-   npx supabase db push
-   ```
-3. Under **Authentication → URL Configuration**: sett *Site URL* til `http://localhost:3000` og legg til `http://localhost:3000/auth/callback` som redirect-URL.
-4. Kopier miljøvariabler og fyll inn verdier fra **Project Settings → API**:
+1. Sett opp Supabase etter **[docs/supabase-oppsett.md](docs/supabase-oppsett.md)** (prosjekt, migrasjoner, auth-URL-er, e-post).
+2. Kopier miljøvariabler og fyll inn:
    ```bash
    cp .env.example .env.local
    ```
-5. Start utviklingsserveren:
+3. Verifiser oppsettet og start:
    ```bash
    npm install
+   npm run check:supabase
    npm run dev
    ```
 
