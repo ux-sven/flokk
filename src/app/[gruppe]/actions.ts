@@ -1,0 +1,103 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient, requireUser } from "@/lib/supabase/server";
+
+export async function joinGroup(groupId: string, slug: string) {
+  const user = await requireUser(`/${slug}`);
+  const supabase = await createClient();
+  await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id, role: "member" });
+  revalidatePath(`/${slug}`);
+}
+
+export async function leaveGroup(groupId: string, slug: string) {
+  const user = await requireUser(`/${slug}`);
+  const supabase = await createClient();
+  await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
+  redirect("/");
+}
+
+export async function createInviteLink(groupId: string, slug: string) {
+  await requireUser(`/${slug}`);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("group_invitations")
+    .insert({ group_id: groupId })
+    .select("token")
+    .single();
+  if (error || !data) return { error: "Kunne ikke lage invitasjon." };
+  return { token: data.token as string };
+}
+
+export type CreateEventState = { error?: string };
+
+export async function createEvent(
+  groupId: string,
+  slug: string,
+  _prev: CreateEventState,
+  formData: FormData,
+): Promise<CreateEventState> {
+  await requireUser(`/${slug}/arrangement/ny`);
+  const title = String(formData.get("title") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim() || null;
+  const options = formData
+    .getAll("option")
+    .map(String)
+    .filter((v) => v && !Number.isNaN(Date.parse(v)));
+
+  if (title.length < 2) return { error: "Gi arrangementet en tittel." };
+  if (options.length === 0) return { error: "Legg til minst ett forslag til tidspunkt." };
+
+  const supabase = await createClient();
+  const { data: event, error } = await supabase
+    .from("events")
+    .insert({ group_id: groupId, title, description, location })
+    .select("id")
+    .single();
+  if (error || !event) return { error: "Kunne ikke opprette arrangementet." };
+
+  const unique = [...new Set(options)].sort();
+  const { error: optError } = await supabase
+    .from("event_time_options")
+    .insert(unique.map((starts_at) => ({ event_id: event.id, starts_at })));
+  if (optError) return { error: "Arrangementet ble opprettet, men tidsforslagene feilet." };
+
+  redirect(`/${slug}/arrangement/${event.id}`);
+}
+
+export async function chooseTime(slug: string, eventId: string, optionId: string | null) {
+  const supabase = await createClient();
+  await supabase
+    .from("events")
+    .update({ chosen_option_id: optionId, status: optionId ? "scheduled" : "planning" })
+    .eq("id", eventId);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export async function addTask(slug: string, eventId: string, formData: FormData) {
+  const title = String(formData.get("title") ?? "").trim();
+  const assignee = String(formData.get("assignee") ?? "") || null;
+  if (!title) return;
+  const supabase = await createClient();
+  await supabase.from("event_tasks").insert({ event_id: eventId, title, assignee_id: assignee });
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export async function updateTask(
+  slug: string,
+  eventId: string,
+  taskId: string,
+  patch: { status?: "todo" | "done"; assignee_id?: string | null },
+) {
+  const supabase = await createClient();
+  await supabase.from("event_tasks").update(patch).eq("id", taskId);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export async function deleteTask(slug: string, eventId: string, taskId: string) {
+  const supabase = await createClient();
+  await supabase.from("event_tasks").delete().eq("id", taskId);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
