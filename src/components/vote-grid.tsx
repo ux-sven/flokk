@@ -9,9 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format";
 import type { VoteAnswer } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { chooseTime } from "@/app/[gruppe]/actions";
+import { chooseTime, removeTimeOption } from "@/app/[gruppe]/actions";
 
-type Option = { id: string; starts_at: string };
+type Option = { id: string; starts_at: string; created_by: string | null };
 type Vote = { option_id: string; user_id: string; answer: VoteAnswer };
 type Person = { id: string; name: string; avatar?: string | null };
 
@@ -27,6 +27,7 @@ const label = { yes: "Ja", maybe: "Kanskje", no: "Nei" };
 export function VoteGrid({
   slug,
   eventId,
+  eventCreatorId,
   options,
   initialVotes,
   people,
@@ -36,6 +37,7 @@ export function VoteGrid({
 }: {
   slug: string;
   eventId: string;
+  eventCreatorId: string;
   options: Option[];
   initialVotes: Vote[];
   people: Person[];
@@ -55,20 +57,34 @@ export function VoteGrid({
     setVotes(initialVotes);
   }
 
+  // Oppdater når andre stemmer eller foreslår/fjerner tidspunkt
   useEffect(() => {
     const ids = options.map((o) => o.id).join(",");
-    if (!ids) return;
     const channel = supabase
-      .channel(`votes:${eventId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "event_votes", filter: `option_id=in.(${ids})` }, () =>
-        router.refresh(),
-      )
-      .subscribe();
+      .channel(`event:${eventId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_time_options", filter: `event_id=eq.${eventId}` },
+        () => router.refresh(),
+      );
+    if (ids) {
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_votes", filter: `option_id=in.(${ids})` },
+        () => router.refresh(),
+      );
+    }
+    channel.subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [supabase, eventId, options, router]);
 
+  if (options.length === 0) {
+    return <p className="text-sm text-muted-foreground">Ingen tidspunkt er foreslått ennå.</p>;
+  }
+
+  const names = Object.fromEntries(people.map((p) => [p.id, p.name]));
   const voteOf = (optionId: string, userId: string) =>
     votes.find((v) => v.option_id === optionId && v.user_id === userId)?.answer;
 
@@ -90,21 +106,48 @@ export function VoteGrid({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-separate border-spacing-1 text-sm">
+      <table className={cn("w-full border-separate border-spacing-1 text-sm", pending && "opacity-70")}>
         <thead>
           <tr>
-            <th className="min-w-36 text-left font-medium text-muted-foreground">Klikk din rad for å stemme</th>
-            {options.map((o) => (
-              <th
-                key={o.id}
-                className={cn(
-                  "min-w-28 rounded-xl px-2 py-2 text-center font-semibold",
-                  o.id === chosenOptionId ? "bg-primary text-primary-foreground" : "bg-muted",
-                )}
-              >
-                {formatDateTime(o.starts_at)}
-              </th>
-            ))}
+            <th className="min-w-36 text-left align-bottom font-medium text-muted-foreground">
+              Klikk din rad for å stemme
+            </th>
+            {options.map((o) => {
+              const chosen = o.id === chosenOptionId;
+              const suggestedBy = o.created_by && o.created_by !== eventCreatorId ? o.created_by : null;
+              const canRemove = !chosen && (canManage || o.created_by === currentUserId);
+              return (
+                <th
+                  key={o.id}
+                  className={cn(
+                    "relative min-w-28 rounded-xl px-2 py-2 text-center align-top font-semibold",
+                    chosen ? "bg-primary text-primary-foreground" : "bg-muted",
+                  )}
+                >
+                  <span className="block">{formatDateTime(o.starts_at)}</span>
+                  {suggestedBy && (
+                    <span className={cn("block text-[11px] font-normal", chosen ? "opacity-80" : "text-muted-foreground")}>
+                      Forslag fra {suggestedBy === currentUserId ? "deg" : (names[suggestedBy] ?? "medlem")}
+                    </span>
+                  )}
+                  {canRemove && (
+                    <button
+                      type="button"
+                      aria-label={`Fjern forslaget ${formatDateTime(o.starts_at)}`}
+                      title="Fjern forslaget"
+                      onClick={() => {
+                        if (confirm("Fjerne dette tidspunktet? Stemmene på det forsvinner også.")) {
+                          startTransition(() => removeTimeOption(slug, eventId, o.id));
+                        }
+                      }}
+                      className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm ring-1 ring-border hover:text-destructive"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
@@ -145,7 +188,12 @@ export function VoteGrid({
             <td className="pt-2 text-muted-foreground">Poeng (ja = 1, kanskje = ½)</td>
             {options.map((o) => (
               <td key={o.id} className="pt-2 text-center">
-                <span className={cn("font-semibold", best > 0 && score(o.id) === best && "text-emerald-600 dark:text-emerald-400")}>
+                <span
+                  className={cn(
+                    "font-semibold",
+                    best > 0 && score(o.id) === best && "text-emerald-600 dark:text-emerald-400",
+                  )}
+                >
                   {score(o.id)}
                 </span>
                 {canManage && (
@@ -156,9 +204,7 @@ export function VoteGrid({
                     className="mt-1 w-full"
                     disabled={pending}
                     onClick={() =>
-                      startTransition(() =>
-                        chooseTime(slug, eventId, o.id === chosenOptionId ? null : o.id),
-                      )
+                      startTransition(() => chooseTime(slug, eventId, o.id === chosenOptionId ? null : o.id))
                     }
                   >
                     {o.id === chosenOptionId ? "Valgt" : "Velg"}

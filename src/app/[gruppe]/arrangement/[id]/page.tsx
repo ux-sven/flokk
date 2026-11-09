@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
 import { CopyLink } from "@/components/copy-link";
 import { TaskList } from "@/components/task-list";
+import { SuggestTime } from "@/components/suggest-time";
+import { SuggestionsToggle } from "@/components/suggestions-toggle";
 import { VoteGrid } from "@/components/vote-grid";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
@@ -41,7 +43,7 @@ async function EventPageContent({ params }: Params) {
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, description, location, status, chosen_option_id, created_by")
+    .select("id, title, description, location, status, chosen_option_id, created_by, allow_time_suggestions")
     .eq("id", id)
     .eq("group_id", group.id)
     .maybeSingle();
@@ -51,7 +53,7 @@ async function EventPageContent({ params }: Params) {
     loadMembers(group.id),
     supabase
       .from("event_time_options")
-      .select("id, starts_at, event_votes(option_id, user_id, answer)")
+      .select("id, starts_at, created_by, event_votes(option_id, user_id, answer)")
       .eq("event_id", id)
       .order("starts_at"),
     supabase
@@ -73,10 +75,11 @@ async function EventPageContent({ params }: Params) {
     avatar: m.profiles?.avatar_url,
   }));
   const names = Object.fromEntries(people.map((p) => [p.id, p.name]));
-  const opts = (options ?? []) as { id: string; starts_at: string; event_votes: { option_id: string; user_id: string; answer: VoteAnswer }[] }[];
+  const opts = (options ?? []) as { id: string; starts_at: string; created_by: string | null; event_votes: { option_id: string; user_id: string; answer: VoteAnswer }[] }[];
   const votes = opts.flatMap((o) => o.event_votes);
   const chosen = opts.find((o) => o.id === event.chosen_option_id);
   const canManage = isAdmin || event.created_by === user.id;
+  const canSuggest = canManage || (event.allow_time_suggestions && event.status === "planning");
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
@@ -107,17 +110,32 @@ async function EventPageContent({ params }: Params) {
       </header>
 
       <section className="space-y-3 rounded-3xl bg-card p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Når passer det?</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xl font-semibold">Når passer det?</h2>
+          {canManage && (
+            <SuggestionsToggle slug={group.slug} eventId={event.id} allowed={event.allow_time_suggestions} />
+          )}
+        </div>
         <VoteGrid
           slug={group.slug}
           eventId={event.id}
-          options={opts.map(({ id, starts_at }) => ({ id, starts_at }))}
+          eventCreatorId={event.created_by}
+          options={opts.map(({ id, starts_at, created_by }) => ({ id, starts_at, created_by }))}
           initialVotes={votes}
           people={people}
           currentUserId={user.id}
           canManage={canManage}
           chosenOptionId={event.chosen_option_id}
         />
+        {canSuggest ? (
+          <SuggestTime slug={group.slug} eventId={event.id} isOrganizer={canManage} />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {event.status === "planning"
+              ? "Arrangøren har stengt for nye forslag."
+              : "Tidspunktet er valgt, så nye forslag er stengt."}
+          </p>
+        )}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">

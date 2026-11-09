@@ -18,6 +18,7 @@ Rekkefølgen er viktig. Velg én av måtene:
 1. `supabase/migrations/20261109120000_init.sql`
 2. `supabase/migrations/20261109130000_grants.sql`
 3. `supabase/migrations/20261109140000_reserve_konto_slug.sql`
+4. `supabase/migrations/20261109150000_time_suggestions.sql`
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 
@@ -29,7 +30,7 @@ npx supabase db push
 
 > Bruk bare én av måtene for samme prosjekt. Har du kjørt A og vil over på B senere, se `supabase migration repair`.
 
-Sjekk etterpå i **Database → Publications → supabase_realtime** at `messages`, `event_votes` og `event_tasks` er med (det gjør migrasjonen, men verdt å se).
+Sjekk etterpå i **Database → Publications → supabase_realtime** at `messages`, `event_votes`, `event_tasks` og `event_time_options` er med (det gjør migrasjonen, men verdt å se).
 
 ## 3. API-nøkler → `.env.local`
 

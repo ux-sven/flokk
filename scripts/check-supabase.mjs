@@ -60,6 +60,13 @@ else if (events.status === 401 || events.body?.code === "42501") ok("Utloggede h
 else if (events.status === 200 && events.body?.length) bad("Utloggede kan lese arrangementer!", "Sjekk at RLS er slått på");
 else bad(`Uventet svar fra events (${events.status})`, JSON.stringify(events.body));
 
+const suggest = await call("/rest/v1/rpc/can_suggest_time", {
+  method: "POST",
+  body: JSON.stringify({ eid: "00000000-0000-0000-0000-000000000000" }),
+});
+if (suggest.status === 200) ok("Forslag til tidspunkt er satt opp (migrasjon 4)");
+else bad("Mangler støtte for forslag til tidspunkt", "Kjør 20261109150000_time_suggestions.sql");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");
@@ -81,7 +88,7 @@ else {
 console.log("\nManuelt (kan ikke sjekkes med publishable key)");
 console.log(`  • Authentication → URL Configuration: Site URL = ${site ?? "http://localhost:3000"}`);
 console.log(`  • Redirect URLs inneholder ${site ?? "http://localhost:3000"}/auth/callback** (med ** på slutten)`);
-console.log("  • Database → Publications → supabase_realtime: messages, event_votes, event_tasks");
+console.log("  • Database → Publications → supabase_realtime: messages, event_votes, event_tasks, event_time_options");
 console.log("  • Egen SMTP før dere inviterer mange (innebygd e-post har lav grense per time)\n");
 
 if (failed) {

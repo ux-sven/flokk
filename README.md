@@ -5,7 +5,7 @@ Samle flokken: opprett grupper, inviter medlemmer og planlegg arrangementer der 
 - **Innlogging** med passord eller magisk lenke, registrering og glemt passord
 - **Grupper** med egen delbar adresse (`flokk.no/turgjengen`), åpne for alle eller kun for inviterte
 - **Invitasjonslenker** (gyldige i 14 dager)
-- **Arrangementer** med tidsavstemning (ja / kanskje / nei) og valgt tidspunkt
+- **Arrangementer** med tidsavstemning (ja / kanskje / nei), der medlemmene også kan foreslå nye tidspunkt
 - **Oppgaver** per arrangement med ansvarlig og status
 - **Chat** for hele gruppen og for hvert arrangement (sanntid)
 

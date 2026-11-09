@@ -42,6 +42,7 @@ export async function createEvent(
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim() || null;
+  const allowSuggestions = formData.get("allow_time_suggestions") === "on";
   const options = formData
     .getAll("option")
     .map(String)
@@ -53,7 +54,7 @@ export async function createEvent(
   const supabase = await createClient();
   const { data: event, error } = await supabase
     .from("events")
-    .insert({ group_id: groupId, title, description, location })
+    .insert({ group_id: groupId, title, description, location, allow_time_suggestions: allowSuggestions })
     .select("id")
     .single();
   if (error || !event) return { error: "Kunne ikke opprette arrangementet." };
@@ -99,5 +100,49 @@ export async function updateTask(
 export async function deleteTask(slug: string, eventId: string, taskId: string) {
   const supabase = await createClient();
   await supabase.from("event_tasks").delete().eq("id", taskId);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export type SuggestTimeState = { error?: string; ok?: number };
+
+/** Et medlem foreslår et nytt tidspunkt, og stemmer automatisk «ja» på det. */
+export async function suggestTime(
+  slug: string,
+  eventId: string,
+  prev: SuggestTimeState,
+  formData: FormData,
+): Promise<SuggestTimeState> {
+  const user = await requireUser(`/${slug}/arrangement/${eventId}`);
+  const startsAt = String(formData.get("starts_at") ?? "");
+  if (Number.isNaN(Date.parse(startsAt))) return { error: "Velg dato og klokkeslett." };
+  if (Date.parse(startsAt) < Date.now()) return { error: "Tidspunktet har allerede vært." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("event_time_options")
+    .insert({ event_id: eventId, starts_at: startsAt })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    if (error?.code === "23505") return { error: "Det tidspunktet er allerede foreslått." };
+    if (error?.code === "42501") return { error: "Forslag er stengt for dette arrangementet." };
+    return { error: "Kunne ikke legge til forslaget." };
+  }
+
+  await supabase.from("event_votes").upsert({ option_id: data.id, user_id: user.id, answer: "yes" });
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+  return { ok: (prev.ok ?? 0) + 1 };
+}
+
+export async function removeTimeOption(slug: string, eventId: string, optionId: string) {
+  const supabase = await createClient();
+  await supabase.from("event_time_options").delete().eq("id", optionId);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export async function setAllowTimeSuggestions(slug: string, eventId: string, allow: boolean) {
+  const supabase = await createClient();
+  await supabase.from("events").update({ allow_time_suggestions: allow }).eq("id", eventId);
   revalidatePath(`/${slug}/arrangement/${eventId}`);
 }
