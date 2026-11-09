@@ -5,7 +5,11 @@ import { isSupabaseConfigured, supabaseKey, supabaseUrl } from "./env";
 /** Fornyer Supabase-sesjonen på hver forespørsel. */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (!isSupabaseConfigured) return response;
+  if (!isSupabaseConfigured) {
+    // Uten .env.local: send alt til forsiden, som forklarer oppsettet
+    if (request.nextUrl.pathname === "/") return response;
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {

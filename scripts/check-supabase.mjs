@@ -74,11 +74,13 @@ else {
   if (s.disable_signup) bad("Nye registreringer er slått av", "Authentication → Sign In / Providers → Allow new users to sign up");
   else ok("Nye brukere kan registrere seg");
   if (s.mailer_autoconfirm) warn("«Confirm email» er av – greit i utvikling, bør være på i produksjon");
+  if (s.password_min_length && s.password_min_length < 8)
+    warn(`Minimum passordlengde i Supabase er ${s.password_min_length} – appen krever 8. Sett den til 8 under Sign In / Providers → Email.`);
 }
 
 console.log("\nManuelt (kan ikke sjekkes med publishable key)");
 console.log(`  • Authentication → URL Configuration: Site URL = ${site ?? "http://localhost:3000"}`);
-console.log(`  • Redirect URLs inneholder ${site ?? "http://localhost:3000"}/auth/callback`);
+console.log(`  • Redirect URLs inneholder ${site ?? "http://localhost:3000"}/auth/callback** (med ** på slutten)`);
 console.log("  • Database → Publications → supabase_realtime: messages, event_votes, event_tasks");
 console.log("  • Egen SMTP før dere inviterer mange (innebygd e-post har lav grense per time)\n");
 

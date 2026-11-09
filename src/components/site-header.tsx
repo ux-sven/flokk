@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { getUser } from "@/lib/supabase/server";
@@ -23,6 +24,7 @@ export function SiteHeader() {
 }
 
 async function UserActions() {
+  await connection(); // brukerdata hentes alltid ved forespørsel
   const user = isSupabaseConfigured ? await getUser() : null;
   return (
     <>

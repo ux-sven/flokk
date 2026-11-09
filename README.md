@@ -2,6 +2,7 @@
 
 Samle flokken: opprett grupper, inviter medlemmer og planlegg arrangementer der alle stemmer på tidspunkt, fordeler oppgaver og snakker sammen.
 
+- **Innlogging** med passord eller magisk lenke, registrering og glemt passord
 - **Grupper** med egen delbar adresse (`flokk.no/turgjengen`), åpne for alle eller kun for inviterte
 - **Invitasjonslenker** (gyldige i 14 dager)
 - **Arrangementer** med tidsavstemning (ja / kanskje / nei) og valgt tidspunkt
@@ -38,7 +39,8 @@ Design: Figma – _lenke kommer_
 src/
   app/
     page.tsx                         Forside / mine flokker
-    login/                           Innlogging med magisk lenke
+    login/                           Innlogging (passord eller magisk lenke)
+    konto/                           Registrering, glemt passord, nytt passord
     auth/callback, auth/logout       Supabase-auth
     grupper/ny/                      Opprett flokk
     [gruppe]/                        Gruppens hjemmeside (delbar URL)

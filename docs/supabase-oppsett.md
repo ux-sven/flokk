@@ -17,6 +17,7 @@ Rekkefølgen er viktig. Velg én av måtene:
 
 1. `supabase/migrations/20261109120000_init.sql`
 2. `supabase/migrations/20261109130000_grants.sql`
+3. `supabase/migrations/20261109140000_reserve_konto_slug.sql`
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 
@@ -49,25 +50,34 @@ Sjekk etterpå i **Database → Publications → supabase_realtime** at `message
 | Felt | Lokalt | Produksjon |
 |---|---|---|
 | Site URL | `http://localhost:3000` | `https://flokk.no` (e.l.) |
-| Redirect URLs | `http://localhost:3000/auth/callback` | `https://flokk.no/auth/callback` |
+| Redirect URLs | `http://localhost:3000/auth/callback**` | `https://flokk.no/auth/callback**` |
 
 For Vercel preview-deployer kan du i tillegg legge til `https://*-<vercel-team>.vercel.app/**`.
 
-Lenken i e-posten går via Supabase og sendes tilbake til `/auth/callback?code=…&next=…`. Står ikke adressen i listen, havner brukeren på Site URL uten å bli logget inn.
+Lenken i e-posten går via Supabase og sendes tilbake til `/auth/callback?next=…&code=…`. Merk `**` på slutten: appen legger på `?next=` (hvor brukeren skal etterpå), og uten jokertegnet godtar ikke Supabase adressen. Da havner brukeren på Site URL uten å bli logget inn.
 
 ### Providers (*Authentication → Sign In / Providers*)
 
-- **Email:** på
+- **Email:** på (dekker både passord og magisk lenke)
 - **Allow new users to sign up:** på (ellers kan ingen registrere seg)
-- **Confirm email:** på (magisk lenke bekrefter e-posten uansett)
-- Passord brukes ikke i appen, men det skader ikke at det står på.
+- **Confirm email:** på i produksjon. Lokalt kan du slå det av mens du venter på SMTP – da blir nye brukere logget inn med en gang uten e-post.
+- **Minimum password length:** 8 (samme som appen krever)
+
+Appen støtter:
+
+| Flyt | Side | Sender e-post? |
+|---|---|---|
+| Innlogging med passord | `/login` | Nei |
+| Innlogging med magisk lenke | `/login` → «Lenke på e-post» | Ja |
+| Registrering | `/konto/registrer` | Ja, hvis «Confirm email» er på |
+| Glemt passord | `/konto/glemt-passord` → `/konto/nytt-passord` | Ja |
 
 ### E-postmal (*Authentication → Emails → Magic Link*)
 
 - **Subject:** `Logg inn på Flokk`
 - **Body:** lim inn `supabase/templates/magic-link.html`
 
-Gjør gjerne det samme for **Confirm signup** (nye brukere får den malen første gang).
+Gjør det samme for **Confirm signup** (`supabase/templates/confirm-signup.html`, emne «Bekreft e-postadressen din») og **Reset Password** (`supabase/templates/reset-password.html`, emne «Nytt passord for Flokk»).
 
 ### SMTP – viktig før dere tar den i bruk
 
