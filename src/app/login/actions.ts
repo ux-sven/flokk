@@ -1,9 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuthError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site-url";
 
 export type AuthState = { error?: string; done?: boolean; email?: string };
 
@@ -14,9 +14,7 @@ function safeNext(next: FormDataEntryValue | null) {
   return value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
-async function siteOrigin() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get("origin") ?? "http://localhost:3000";
-}
+const siteOrigin = getSiteOrigin;
 
 function callbackUrl(origin: string, next: string) {
   return `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
