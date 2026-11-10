@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LocationInput } from "@/components/location-input";
 import { createEvent, type CreateEventState } from "../../actions";
 
 function toIso(local: string) {
@@ -29,7 +30,7 @@ export function NewEventForm({ groupId, slug }: { groupId: string; slug: string 
       </div>
       <div className="space-y-2">
         <Label htmlFor="location">Sted</Label>
-        <Input id="location" name="location" className="h-10" placeholder="Hos Kari" />
+        <LocationInput />
       </div>
       <div className="space-y-2">
         <Label htmlFor="description">Beskrivelse</Label>

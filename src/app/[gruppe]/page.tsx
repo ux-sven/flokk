@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Chat } from "@/components/chat";
 import { CopyLink } from "@/components/copy-link";
+import { GroupAppearanceButton } from "@/components/group-appearance-button";
 import { InvitePanel } from "@/components/invite-panel";
 import { MarkRead } from "@/components/mark-read";
 import { MemberAvatar } from "@/components/member-avatar";
@@ -14,7 +15,7 @@ import { NotifyLevelPicker } from "@/components/notify-level-picker";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
-import { asTint, tintBg } from "@/lib/tints";
+import { asBackdrop, asTint, groupSurface } from "@/lib/tints";
 import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
-      <header className={cn("rounded-3xl p-6 sm:p-8", tintBg[asTint(group.tint)])}>
+      <header className={cn("rounded-3xl p-6 sm:p-8", groupSurface(group))}>
         <div className="flex flex-wrap items-start gap-4">
           <span className="text-5xl" aria-hidden>
             {group.emoji ?? "🪺"}
@@ -58,6 +59,14 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
           </div>
           <div className="flex flex-wrap gap-2">
             <CopyLink path={`/${group.slug}`} />
+            {isAdmin && (
+              <GroupAppearanceButton
+                key={`${group.tint}:${group.backdrop}`}
+                groupId={group.id}
+                slug={group.slug}
+                initial={{ tint: asTint(group.tint), backdrop: asBackdrop(group.backdrop) }}
+              />
+            )}
             {!user && (
               <Link href={`/login?next=/${group.slug}`} className={buttonVariants({ size: "lg" })}>
                 Logg inn for å bli med

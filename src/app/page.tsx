@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
-import { asTint, tintBg } from "@/lib/tints";
+import { groupSurface, tintBg } from "@/lib/tints";
 import type { Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ type DashboardEvent = {
   id: string;
   title: string;
   location: string | null;
-  groups: { slug: string; name: string; tint: string } | null;
+  groups: { slug: string; name: string; tint: string; backdrop: string | null } | null;
   chosen: { starts_at: string } | null;
 };
 
@@ -38,12 +38,12 @@ async function Dashboard({ userId }: { userId: string }) {
   const [{ data: memberships }, { data: events }] = await Promise.all([
     supabase
       .from("group_members")
-      .select("role, groups(id, slug, name, description, tint, emoji, visibility)")
+      .select("role, groups(id, slug, name, description, tint, backdrop, emoji, visibility)")
       .eq("user_id", userId)
       .order("joined_at", { ascending: false }),
     supabase
       .from("events")
-      .select("id, title, status, location, groups(slug, name, tint), chosen:event_time_options!events_chosen_option_fk(starts_at)")
+      .select("id, title, status, location, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
       .neq("status", "cancelled")
       .is("archived_at", null)
       .order("created_at", { ascending: false })
@@ -76,7 +76,7 @@ async function Dashboard({ userId }: { userId: string }) {
                 href={`/${g.slug}`}
                 className={cn(
                   "flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-3xl p-4 text-center transition-transform hover:-translate-y-0.5",
-                  tintBg[asTint(g.tint)],
+                  groupSurface(g),
                 )}
               >
                 <span className="text-3xl" aria-hidden>
@@ -101,7 +101,7 @@ async function Dashboard({ userId }: { userId: string }) {
                 href={`/${e.groups?.slug}/arrangement/${e.id}`}
                 className="group overflow-hidden rounded-3xl bg-card shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className={cn("h-24", tintBg[asTint(e.groups?.tint)])} />
+                <div className={cn("h-24", groupSurface(e.groups))} />
                 <div className="space-y-1 p-5">
                   <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     {e.chosen?.starts_at ? formatDateTime(e.chosen.starts_at) : "Stemming pågår"}

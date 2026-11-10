@@ -10,7 +10,7 @@ export const loadGroup = cache(async (slug: string) => {
   const [{ data: group }, { data: auth }] = await Promise.all([
     supabase
       .from("groups")
-      .select("id, slug, name, description, visibility, tint, emoji")
+      .select("id, slug, name, description, visibility, tint, backdrop, emoji")
       .eq("slug", slug)
       .maybeSingle<Group>(),
     supabase.auth.getUser(),

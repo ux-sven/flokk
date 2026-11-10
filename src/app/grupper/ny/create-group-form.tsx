@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/format";
-import { TINTS, tintBg, tintLabel } from "@/lib/tints";
-import { cn } from "@/lib/utils";
+import { AppearancePicker, type Appearance } from "@/components/appearance-picker";
 import { createGroup, type CreateGroupState } from "./actions";
 
 export function CreateGroupForm({ siteUrl }: { siteUrl: string }) {
@@ -15,7 +14,7 @@ export function CreateGroupForm({ siteUrl }: { siteUrl: string }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
-  const [tint, setTint] = useState<(typeof TINTS)[number]>("mint");
+  const [look, setLook] = useState<Appearance>({ tint: "mint", backdrop: "sommer" });
   const effectiveSlug = slugEdited ? slug : slugify(name);
 
   return (
@@ -83,24 +82,10 @@ export function CreateGroupForm({ siteUrl }: { siteUrl: string }) {
       </fieldset>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Farge</legend>
-        <input type="hidden" name="tint" value={tint} />
-        <div className="flex flex-wrap gap-2">
-          {TINTS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTint(t)}
-              aria-pressed={tint === t}
-              aria-label={tintLabel[t]}
-              className={cn(
-                "size-10 rounded-full ring-offset-2 ring-offset-background transition",
-                tintBg[t],
-                tint === t && "ring-2 ring-primary",
-              )}
-            />
-          ))}
-        </div>
+        <legend className="text-sm font-medium">Utseende</legend>
+        <input type="hidden" name="tint" value={look.tint} />
+        <input type="hidden" name="backdrop" value={look.backdrop ?? ""} />
+        <AppearancePicker value={look} onChange={setLook} />
       </fieldset>
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}

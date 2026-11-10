@@ -3,7 +3,7 @@ import Loading from "@/app/loading";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Archive, CalendarCheck, MapPin } from "lucide-react";
+import { Archive, CalendarCheck, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
 import { EventAdminActions } from "@/components/event-admin-actions";
@@ -15,7 +15,8 @@ import { SuggestionsToggle } from "@/components/suggestions-toggle";
 import { VoteGrid } from "@/components/vote-grid";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
-import { asTint, tintBg } from "@/lib/tints";
+import { groupSurface } from "@/lib/tints";
+import { mapsUrl } from "@/lib/places";
 import type { Message, VoteAnswer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,7 @@ async function EventPageContent({ params }: Params) {
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, description, location, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
+    .select("id, title, description, location, location_lat, location_lng, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
     .eq("id", id)
     .eq("group_id", group.id)
     .maybeSingle();
@@ -102,7 +103,7 @@ async function EventPageContent({ params }: Params) {
         </p>
       )}
 
-      <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", tintBg[asTint(group.tint)])}>
+      <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", groupSurface(group))}>
         <div className="flex flex-wrap items-start gap-3">
           <h1 className="flex-1 text-3xl font-bold tracking-tight">{event.title}</h1>
           <CopyLink path={`/${group.slug}/arrangement/${event.id}`} />
@@ -115,11 +116,24 @@ async function EventPageContent({ params }: Params) {
           ) : (
             <Badge variant="secondary">Stemming pågår</Badge>
           )}
-          {event.location && (
-            <span className="flex items-center gap-1">
-              <MapPin className="size-4" /> {event.location}
-            </span>
-          )}
+          {event.location &&
+            (event.location_lat != null && event.location_lng != null ? (
+              <a
+                href={mapsUrl(event.location_lat, event.location_lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                title="Åpne i Google Maps"
+              >
+                <MapPin className="size-4" /> {event.location}
+                <ExternalLink className="size-3.5 opacity-70" />
+                <span className="sr-only">(åpnes i Google Maps)</span>
+              </a>
+            ) : (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-4" /> {event.location}
+              </span>
+            ))}
         </div>
         {event.description && <p className="max-w-3xl whitespace-pre-wrap opacity-80">{event.description}</p>}
       </header>

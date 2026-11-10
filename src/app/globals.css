@@ -150,3 +150,40 @@
     @apply font-sans;
   }
 }
+/* Bakgrunnsbilder for flokker (public/backdrops). Motivet ligger til høyre og toner ut mot venstre,
+   så teksten står på rolig flate. I mørk modus legges et mørkt slør over. */
+@layer components {
+  .backdrop {
+    --backdrop-scrim: linear-gradient(transparent, transparent);
+    background-color: #f8f7f4;
+    background-image: var(--backdrop-scrim), var(--backdrop-img);
+    background-size: cover;
+    background-position: 75% center;
+    background-repeat: no-repeat;
+    color: oklch(0.18 0.01 260);
+  }
+  .backdrop-var { --backdrop-img: url(/backdrops/var.svg); }
+  .backdrop-sommer { --backdrop-img: url(/backdrops/sommer.svg); }
+  .backdrop-host { --backdrop-img: url(/backdrops/host.svg); }
+  .backdrop-vinter { --backdrop-img: url(/backdrops/vinter.svg); }
+  .backdrop-fotball { --backdrop-img: url(/backdrops/fotball.svg); }
+  .backdrop-ski { --backdrop-img: url(/backdrops/ski.svg); }
+  .backdrop-sykkel { --backdrop-img: url(/backdrops/sykkel.svg); }
+  .backdrop-noter { --backdrop-img: url(/backdrops/noter.svg); }
+  .backdrop-piano { --backdrop-img: url(/backdrops/piano.svg); }
+  .backdrop-lydbolger { --backdrop-img: url(/backdrops/lydbolger.svg); }
+  .backdrop-kaffe { --backdrop-img: url(/backdrops/kaffe.svg); }
+  .backdrop-sitrus { --backdrop-img: url(/backdrops/sitrus.svg); }
+  .backdrop-urter { --backdrop-img: url(/backdrops/urter.svg); }
+  .backdrop-friluftsliv { --backdrop-img: url(/backdrops/friluftsliv.svg); }
+  .backdrop-boker { --backdrop-img: url(/backdrops/boker.svg); }
+  .backdrop-reise { --backdrop-img: url(/backdrops/reise.svg); }
+
+  @media (prefers-color-scheme: dark) {
+    .backdrop {
+      --backdrop-scrim: linear-gradient(90deg, oklch(0.2 0.01 260 / 0.9), oklch(0.2 0.01 260 / 0.62));
+      background-color: oklch(0.2 0.01 260);
+      color: oklch(0.96 0.004 250);
+    }
+  }
+}

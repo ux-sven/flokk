@@ -11,6 +11,7 @@ export type Group = {
   description: string;
   visibility: Visibility;
   tint: string;
+  backdrop: string | null;
   emoji: string | null;
 };
 

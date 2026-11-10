@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import type { NotifyLevel } from "@/lib/notifications";
+import { asBackdrop, asTint } from "@/lib/tints";
+import { parseCoords } from "@/lib/places";
 
 export async function joinGroup(groupId: string, slug: string) {
   const user = await requireUser(`/${slug}`);
@@ -42,7 +44,8 @@ export async function createEvent(
   await requireUser(`/${slug}/arrangement/ny`);
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const location = String(formData.get("location") ?? "").trim() || null;
+  const location = String(formData.get("location") ?? "").trim().slice(0, 200) || null;
+  const coords = location ? parseCoords(formData.get("location_lat"), formData.get("location_lng")) : null;
   const allowSuggestions = formData.get("allow_time_suggestions") === "on";
   const options = formData
     .getAll("option")
@@ -55,7 +58,14 @@ export async function createEvent(
   const supabase = await createClient();
   const { data: event, error } = await supabase
     .from("events")
-    .insert({ group_id: groupId, title, description, location, allow_time_suggestions: allowSuggestions })
+    .insert({
+      group_id: groupId,
+      title,
+      description,
+      location,
+      ...(coords ? { location_lat: coords.lat, location_lng: coords.lng } : {}),
+      allow_time_suggestions: allowSuggestions,
+    })
     .select("id")
     .single();
   if (error || !event) return { error: "Kunne ikke opprette arrangementet." };
@@ -197,4 +207,19 @@ export async function deleteEvent(slug: string, eventId: string) {
   revalidatePath(`/${slug}`);
   revalidatePath("/");
   redirect(`/${slug}`);
+}
+
+export async function setGroupAppearance(groupId: string, slug: string, tint: string, backdrop: string | null) {
+  await requireUser(`/${slug}`);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("groups")
+    .update({ tint: asTint(tint), backdrop: asBackdrop(backdrop) })
+    .eq("id", groupId)
+    .select("id");
+  if (error) return { error: "Kunne ikke lagre utseendet. Er databasen oppdatert?" };
+  if (!data?.length) return { error: "Bare admins kan endre utseendet på flokken." };
+  revalidatePath(`/${slug}`, "layout");
+  revalidatePath("/");
+  return {};
 }

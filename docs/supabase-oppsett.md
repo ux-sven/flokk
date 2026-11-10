@@ -22,6 +22,8 @@ Rekkefølgen er viktig. Velg én av måtene:
 5. `supabase/migrations/20261109160000_notifications.sql`
 6. `supabase/migrations/20261110090000_push_subscriptions.sql` (deretter: [push-varsler.md](push-varsler.md))
 7. `supabase/migrations/20261110120000_members_and_archive.sql`
+8. `supabase/migrations/20261110150000_group_backdrop.sql`
+9. `supabase/migrations/20261110160000_event_location.sql`
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 
