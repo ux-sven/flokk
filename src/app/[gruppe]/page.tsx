@@ -8,10 +8,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Chat } from "@/components/chat";
 import { CopyLink } from "@/components/copy-link";
 import { InvitePanel } from "@/components/invite-panel";
+import { MarkRead } from "@/components/mark-read";
 import { MemberAvatar } from "@/components/member-avatar";
+import { NotifyLevelPicker } from "@/components/notify-level-picker";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
 import { asTint, tintBg } from "@/lib/tints";
+import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { joinGroup, leaveGroup } from "./actions";
@@ -101,7 +104,7 @@ async function MemberView({
   isAdmin: boolean;
   isOwner: boolean;
 }) {
-  const [members, { data: events }, { data: messages }] = await Promise.all([
+  const [members, { data: events }, { data: messages }, { data: me }] = await Promise.all([
     loadMembers(groupId),
     supabase
       .from("events")
@@ -116,6 +119,12 @@ async function MemberView({
       .is("event_id", null)
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("group_members")
+      .select("notify_level")
+      .eq("group_id", groupId)
+      .eq("user_id", userId)
+      .maybeSingle<{ notify_level: NotifyLevel }>(),
   ]);
 
   const eventList = (events ?? []) as unknown as {
@@ -162,13 +171,16 @@ async function MemberView({
           )}
         </section>
 
-        <Chat
-          title="Gruppechat"
-          groupId={groupId}
-          currentUserId={userId}
-          names={names}
-          initialMessages={((messages ?? []) as Message[]).reverse()}
-        />
+        <MarkRead groupId={groupId} />
+        <div id="chat" className="scroll-mt-20">
+          <Chat
+            title="Gruppechat"
+            groupId={groupId}
+            currentUserId={userId}
+            names={names}
+            initialMessages={((messages ?? []) as Message[]).reverse()}
+          />
+        </div>
       </div>
 
       <aside className="space-y-6">
@@ -188,6 +200,7 @@ async function MemberView({
           </ul>
           {isAdmin && <InvitePanel groupId={groupId} slug={slug} />}
         </section>
+        <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
         {!isOwner && (
           <form action={leaveGroup.bind(null, groupId, slug)}>
             <Button type="submit" variant="ghost" className="w-full text-muted-foreground">

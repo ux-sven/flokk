@@ -17,6 +17,19 @@ export function formatTime(iso: string) {
   );
 }
 
+const relative = new Intl.RelativeTimeFormat("nb-NO", { numeric: "auto" });
+
+/** «for 5 minutter siden», «i går» osv.; eldre enn en uke vises som dato. */
+export function formatRelative(iso: string, now = Date.now()) {
+  const seconds = Math.round((new Date(iso).getTime() - now) / 1000);
+  const abs = Math.abs(seconds);
+  if (abs < 60) return "nå";
+  if (abs < 3600) return relative.format(Math.round(seconds / 60), "minute");
+  if (abs < 86400) return relative.format(Math.round(seconds / 3600), "hour");
+  if (abs < 7 * 86400) return relative.format(Math.round(seconds / 86400), "day");
+  return formatDateTime(iso);
+}
+
 export function initials(name: string) {
   return name
     .split(/\s+/)

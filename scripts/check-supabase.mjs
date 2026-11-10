@@ -67,9 +67,35 @@ const suggest = await call("/rest/v1/rpc/can_suggest_time", {
 if (suggest.status === 200) ok("Forslag til tidspunkt er satt opp (migrasjon 4)");
 else bad("Mangler støtte for forslag til tidspunkt", "Kjør 20261109150000_time_suggestions.sql");
 
+const notif = await call("/rest/v1/notifications?select=id&limit=1");
+if (notif.body?.code === "PGRST205" || notif.body?.code === "42P01")
+  bad("Mangler varsler", "Kjør 20261109160000_notifications.sql");
+else if (notif.status === 200 && Array.isArray(notif.body) && notif.body.length) bad("Utloggede kan lese varsler!", "Sjekk RLS på notifications");
+else ok("Varsler er satt opp (migrasjon 5) og skjult for utloggede");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");
+
+console.log("\nPush-varsler");
+const vapid = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+if (vapid && vapid.length === 87) ok("NEXT_PUBLIC_VAPID_PUBLIC_KEY er satt");
+else bad("NEXT_PUBLIC_VAPID_PUBLIC_KEY mangler eller er ugyldig", "Kjør npm run vapid (se docs/push-varsler.md)");
+if (process.env.VAPID_PRIVATE_KEY && !process.env.NEXT_PUBLIC_VAPID_PRIVATE_KEY) ok("Privat VAPID-nøkkel er ikke eksponert til nettleseren");
+if (process.env.NEXT_PUBLIC_VAPID_PRIVATE_KEY) bad("Den private VAPID-nøkkelen ligger i NEXT_PUBLIC_*!", "Fjern NEXT_PUBLIC_-prefikset");
+
+const subs = await call("/rest/v1/push_subscriptions?select=id&limit=1");
+if (subs.body?.code === "PGRST205" || subs.body?.code === "42P01")
+  bad("Tabellen push_subscriptions finnes ikke", "Kjør 20261110090000_push_subscriptions.sql");
+else if (subs.status === 200 && Array.isArray(subs.body) && subs.body.length) bad("Utloggede kan lese push-abonnementer!", "Sjekk RLS");
+else ok("Push-abonnementer er satt opp (migrasjon 6) og skjult for utloggede");
+
+const fn = await call("/functions/v1/send-push", { method: "POST", body: "{}" });
+if (fn.status === 401 && fn.body?.error === "unauthorized") ok("Edge Function send-push er deployet (med Verify JWT av)");
+else if (fn.status === 401) bad("send-push avviser kall før funksjonen kjører", "Slå av «Verify JWT» for funksjonen");
+else if (fn.status === 404) bad("Edge Function send-push er ikke deployet", "Se docs/push-varsler.md, steg 3");
+else bad(`Uventet svar fra send-push (${fn.status})`, JSON.stringify(fn.body));
+warn("Sjekk manuelt: Database → Webhooks → push_notifications (INSERT+UPDATE på notifications, header x-flokk-secret)");
 
 console.log("\nAuth");
 const auth = await call("/auth/v1/settings");
@@ -88,7 +114,7 @@ else {
 console.log("\nManuelt (kan ikke sjekkes med publishable key)");
 console.log(`  • Authentication → URL Configuration: Site URL = ${site ?? "http://localhost:3000"}`);
 console.log(`  • Redirect URLs inneholder ${site ?? "http://localhost:3000"}/auth/callback** (med ** på slutten)`);
-console.log("  • Database → Publications → supabase_realtime: messages, event_votes, event_tasks, event_time_options");
+console.log("  • Database → Publications → supabase_realtime: messages, event_votes, event_tasks, event_time_options, notifications");
 console.log("  • Egen SMTP før dere inviterer mange (innebygd e-post har lav grense per time)\n");
 
 if (failed) {

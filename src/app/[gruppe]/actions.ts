@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import type { NotifyLevel } from "@/lib/notifications";
 
 export async function joinGroup(groupId: string, slug: string) {
   const user = await requireUser(`/${slug}`);
@@ -145,4 +146,13 @@ export async function setAllowTimeSuggestions(slug: string, eventId: string, all
   const supabase = await createClient();
   await supabase.from("events").update({ allow_time_suggestions: allow }).eq("id", eventId);
   revalidatePath(`/${slug}/arrangement/${eventId}`);
+}
+
+export async function setNotifyLevel(groupId: string, slug: string, level: NotifyLevel) {
+  await requireUser(`/${slug}`);
+  if (!["all", "important", "none"].includes(level)) return;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_notify_level", { gid: groupId, level });
+  if (error) console.error("[notify-level]", error.message);
+  revalidatePath(`/${slug}`);
 }

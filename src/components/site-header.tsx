@@ -3,7 +3,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { getUser } from "@/lib/supabase/server";
+import { NotificationBell } from "@/components/notification-bell";
+import { createClient, getUser } from "@/lib/supabase/server";
+import { NOTIFICATION_LIMIT, NOTIFICATION_SELECT, type AppNotification } from "@/lib/notifications";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export function SiteHeader() {
@@ -26,10 +28,21 @@ export function SiteHeader() {
 async function UserActions() {
   await connection(); // brukerdata hentes alltid ved forespørsel
   const user = isSupabaseConfigured ? await getUser() : null;
+  let notifications: AppNotification[] = [];
+  if (user) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("notifications")
+      .select(NOTIFICATION_SELECT)
+      .order("updated_at", { ascending: false })
+      .limit(NOTIFICATION_LIMIT);
+    notifications = (data ?? []) as unknown as AppNotification[];
+  }
   return (
     <>
           {user ? (
             <>
+              <NotificationBell userId={user.id} initial={notifications} />
               <Link href="/grupper/ny" className={buttonVariants({ size: "lg" })}>
                 <Plus /> Ny flokk
               </Link>

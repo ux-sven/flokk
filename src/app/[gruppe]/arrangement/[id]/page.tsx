@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { CalendarCheck, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
+import { MarkRead } from "@/components/mark-read";
 import { CopyLink } from "@/components/copy-link";
 import { TaskList } from "@/components/task-list";
 import { SuggestTime } from "@/components/suggest-time";
@@ -138,6 +139,7 @@ async function EventPageContent({ params }: Params) {
         )}
       </section>
 
+      <MarkRead groupId={group.id} eventId={event.id} />
       <div className="grid gap-6 lg:grid-cols-2">
         <TaskList
           slug={group.slug}
