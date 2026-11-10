@@ -62,7 +62,7 @@ Edge Functions → **Secrets** → legg til:
 | `VAPID_PRIVATE_KEY` | fra `.env.local` |
 | `VAPID_SUBJECT` | `mailto:` + en adresse push-tjenestene kan kontakte ved problemer, eller nettstedets `https://`-adresse |
 | `PUSH_WEBHOOK_SECRET` | fra `.env.local` |
-| `SITE_URL` | `http://localhost:3000` lokalt, senere produksjonsadressen (brukes til CORS) |
+| `SITE_URL` | Adressene appen kjører på, kommaseparert, f.eks. `https://flokk.vercel.app,http://localhost:3000` (brukes til CORS) |
 
 ### 5. Database Webhook
 

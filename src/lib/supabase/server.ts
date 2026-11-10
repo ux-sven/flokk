@@ -2,6 +2,7 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { isSupabaseConfigured, supabaseKey, supabaseUrl } from "./env";
 
 export async function createClient() {
@@ -10,6 +11,10 @@ export async function createClient() {
       "Supabase er ikke konfigurert: sett NEXT_PUBLIC_SUPABASE_URL og NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY i .env.local (se docs/supabase-oppsett.md).",
     );
   }
+  // Supabase sjekker utløpstid med Date.now(). Med runtime-prefetch kan
+  // cookies() være tilgjengelig under forhåndsrendering, så vi venter
+  // eksplisitt på en ekte forespørsel før brukerdata leses.
+  await connection();
   const cookieStore = await cookies();
 
   return createServerClient(supabaseUrl, supabaseKey, {

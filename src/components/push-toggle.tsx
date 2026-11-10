@@ -89,7 +89,11 @@ export function PushToggle() {
       setState("on");
     } catch (e) {
       console.error("[push]", e);
-      setError("Kunne ikke slå på varsler. Prøv igjen.");
+      setError(
+        e instanceof DOMException && e.name === "AbortError"
+          ? "Nettleseren fikk ikke kontakt med push-tjenesten sin. Det kan skyldes et bedriftsnett/VPN eller nettleserinnstillinger – prøv et annet nett eller Safari."
+          : "Kunne ikke slå på varsler. Prøv igjen.",
+      );
     } finally {
       setBusy(false);
     }

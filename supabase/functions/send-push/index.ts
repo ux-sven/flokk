@@ -6,7 +6,8 @@
 //  2. Fra appen med brukerens innlogging og { "test": true } for et testvarsel.
 //
 // Hemmeligheter (Edge Functions → Secrets):
-//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, PUSH_WEBHOOK_SECRET, SITE_URL
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, PUSH_WEBHOOK_SECRET,
+//   SITE_URL (kommaseparert liste over adresser appen kjører på)
 // SUPABASE_URL og SUPABASE_SERVICE_ROLE_KEY finnes automatisk.
 //
 // Deploy med «Verify JWT» slått AV – funksjonen sjekker selv hemmelighet/innlogging.
@@ -24,11 +25,19 @@ const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY")
   auth: { persistSession: false },
 });
 
-const cors = {
-  "Access-Control-Allow-Origin": env("SITE_URL") || "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// SITE_URL kan være flere adresser, kommaseparert (f.eks. produksjon og localhost)
+const allowedOrigins = env("SITE_URL").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+
+let cors: Record<string, string> = {};
+function setCors(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  cors = {
+    "Access-Control-Allow-Origin": !allowedOrigins.length ? "*" : allowedOrigins.includes(origin) ? origin : allowedOrigins[0],
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -146,6 +155,7 @@ async function handleNotification(n: NotificationRow) {
 }
 
 Deno.serve(async (req) => {
+  setCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method" }, 405);
 

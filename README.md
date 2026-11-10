@@ -17,7 +17,7 @@ Design: Figma – _lenke kommer_
 |---|---|
 | App | Next.js 16 (App Router, Cache Components), React 19, TypeScript |
 | UI | Tailwind CSS 4, shadcn/ui (Base UI), lucide-ikoner, Plus Jakarta Sans |
-| Backend | Supabase: Postgres med Row Level Security, Auth (magisk lenke), Realtime |
+| Backend | Supabase: Postgres med Row Level Security, Auth (passord og magisk lenke), Realtime, Edge Functions (Web Push) |
 
 ## Kom i gang
 
@@ -32,6 +32,8 @@ Design: Figma – _lenke kommer_
    npm run check:supabase
    npm run dev
    ```
+4. Push-varsler: **[docs/push-varsler.md](docs/push-varsler.md)**.
+5. Publisering (GitHub → Vercel): **[docs/publisering.md](docs/publisering.md)**.
 
 ## Struktur
 
