@@ -15,7 +15,7 @@ import { NotifyLevelPicker } from "@/components/notify-level-picker";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
-import { asBackdrop, asTint, groupSurface } from "@/lib/tints";
+import { asBackdrop, asTint, eventSurface, groupSurface } from "@/lib/tints";
 import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -118,7 +118,7 @@ async function MemberView({
     loadMembers(groupId),
     supabase
       .from("events")
-      .select("id, title, status, location, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
+      .select("id, title, status, location, backdrop, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
       .eq("group_id", groupId)
       .neq("status", "cancelled")
       .is("archived_at", null)
@@ -149,6 +149,7 @@ async function MemberView({
     id: string;
     title: string;
     location: string | null;
+    backdrop: string | null;
     chosen: { starts_at: string } | null;
     event_time_options: { count: number }[];
   }[];
@@ -174,15 +175,18 @@ async function MemberView({
                 <Link
                   key={e.id}
                   href={`/${slug}/arrangement/${e.id}`}
-                  className="space-y-1 rounded-3xl bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+                  className="overflow-hidden rounded-3xl bg-card shadow-sm transition-shadow hover:shadow-md"
                 >
-                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    {e.chosen?.starts_at
-                      ? formatDateTime(e.chosen.starts_at)
-                      : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
-                  </p>
-                  <p className="font-semibold">{e.title}</p>
-                  {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
+                  {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
+                  <div className="space-y-1 p-5">
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      {e.chosen?.starts_at
+                        ? formatDateTime(e.chosen.starts_at)
+                        : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
+                    </p>
+                    <p className="font-semibold">{e.title}</p>
+                    {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
+                  </div>
                 </Link>
               ))}
             </div>

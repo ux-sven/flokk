@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
-import { groupSurface, tintBg } from "@/lib/tints";
+import { eventSurface, groupSurface, tintBg } from "@/lib/tints";
 import type { Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ type DashboardEvent = {
   id: string;
   title: string;
   location: string | null;
+  backdrop: string | null;
   groups: { slug: string; name: string; tint: string; backdrop: string | null } | null;
   chosen: { starts_at: string } | null;
 };
@@ -43,7 +44,7 @@ async function Dashboard({ userId }: { userId: string }) {
       .order("joined_at", { ascending: false }),
     supabase
       .from("events")
-      .select("id, title, status, location, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
+      .select("id, title, status, location, backdrop, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
       .neq("status", "cancelled")
       .is("archived_at", null)
       .order("created_at", { ascending: false })
@@ -101,7 +102,7 @@ async function Dashboard({ userId }: { userId: string }) {
                 href={`/${e.groups?.slug}/arrangement/${e.id}`}
                 className="group overflow-hidden rounded-3xl bg-card shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className={cn("h-24", groupSurface(e.groups))} />
+                <div className={cn("h-24", eventSurface(e, e.groups))} />
                 <div className="space-y-1 p-5">
                   <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     {e.chosen?.starts_at ? formatDateTime(e.chosen.starts_at) : "Stemming pågår"}

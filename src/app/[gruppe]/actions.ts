@@ -47,6 +47,7 @@ export async function createEvent(
   const location = String(formData.get("location") ?? "").trim().slice(0, 200) || null;
   const coords = location ? parseCoords(formData.get("location_lat"), formData.get("location_lng")) : null;
   const allowSuggestions = formData.get("allow_time_suggestions") === "on";
+  const backdrop = asBackdrop(String(formData.get("backdrop") ?? ""));
   const options = formData
     .getAll("option")
     .map(String)
@@ -65,6 +66,7 @@ export async function createEvent(
       location,
       ...(coords ? { location_lat: coords.lat, location_lng: coords.lng } : {}),
       allow_time_suggestions: allowSuggestions,
+      ...(backdrop ? { backdrop } : {}),
     })
     .select("id")
     .single();
@@ -219,6 +221,21 @@ export async function setGroupAppearance(groupId: string, slug: string, tint: st
     .select("id");
   if (error) return { error: "Kunne ikke lagre utseendet. Er databasen oppdatert?" };
   if (!data?.length) return { error: "Bare admins kan endre utseendet på flokken." };
+  revalidatePath(`/${slug}`, "layout");
+  revalidatePath("/");
+  return {};
+}
+
+export async function setEventBackdrop(slug: string, eventId: string, backdrop: string | null) {
+  await requireUser(`/${slug}/arrangement/${eventId}`);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .update({ backdrop: asBackdrop(backdrop) })
+    .eq("id", eventId)
+    .select("id");
+  if (error) return { error: "Kunne ikke lagre bakgrunnen. Er databasen oppdatert?" };
+  if (!data?.length) return { error: "Bare arrangøren eller en admin kan endre bakgrunnen." };
   revalidatePath(`/${slug}`, "layout");
   revalidatePath("/");
   return {};

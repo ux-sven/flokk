@@ -6,6 +6,7 @@ import { notFound, redirect } from "next/navigation";
 import { Archive, CalendarCheck, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
+import { EventAppearanceButton } from "@/components/event-appearance-button";
 import { EventAdminActions } from "@/components/event-admin-actions";
 import { MarkRead } from "@/components/mark-read";
 import { CopyLink } from "@/components/copy-link";
@@ -15,7 +16,7 @@ import { SuggestionsToggle } from "@/components/suggestions-toggle";
 import { VoteGrid } from "@/components/vote-grid";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
-import { groupSurface } from "@/lib/tints";
+import { asBackdrop, eventSurface, groupSurface } from "@/lib/tints";
 import { mapsUrl } from "@/lib/places";
 import type { Message, VoteAnswer } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,7 @@ async function EventPageContent({ params }: Params) {
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, description, location, location_lat, location_lng, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
+    .select("id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
     .eq("id", id)
     .eq("group_id", group.id)
     .maybeSingle();
@@ -92,7 +93,16 @@ async function EventPageContent({ params }: Params) {
           ← {group.name}
         </Link>
         {canManage && (
-          <EventAdminActions slug={group.slug} eventId={event.id} title={event.title} archived={isArchived} />
+          <div className="flex flex-wrap gap-2">
+            <EventAppearanceButton
+              key={event.backdrop ?? "none"}
+              slug={group.slug}
+              eventId={event.id}
+              initial={asBackdrop(event.backdrop)}
+              groupSurfaceClass={groupSurface(group)}
+            />
+            <EventAdminActions slug={group.slug} eventId={event.id} title={event.title} archived={isArchived} />
+          </div>
         )}
       </div>
 
@@ -103,7 +113,7 @@ async function EventPageContent({ params }: Params) {
         </p>
       )}
 
-      <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", groupSurface(group))}>
+      <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", eventSurface(event, group))}>
         <div className="flex flex-wrap items-start gap-3">
           <h1 className="flex-1 text-3xl font-bold tracking-tight">{event.title}</h1>
           <CopyLink path={`/${group.slug}/arrangement/${event.id}`} />

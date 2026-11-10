@@ -1,12 +1,15 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { ChevronDown, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationInput } from "@/components/location-input";
+import { BackdropPicker } from "@/components/appearance-picker";
+import { backdropClass, backdropLabel, type Backdrop } from "@/lib/tints";
+import { cn } from "@/lib/utils";
 import { createEvent, type CreateEventState } from "../../actions";
 
 function toIso(local: string) {
@@ -15,12 +18,21 @@ function toIso(local: string) {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
-export function NewEventForm({ groupId, slug }: { groupId: string; slug: string }) {
+export function NewEventForm({
+  groupId,
+  slug,
+  groupSurfaceClass,
+}: {
+  groupId: string;
+  slug: string;
+  groupSurfaceClass: string;
+}) {
   const [state, action, pending] = useActionState<CreateEventState, FormData>(
     createEvent.bind(null, groupId, slug),
     {},
   );
   const [options, setOptions] = useState<string[]>([""]);
+  const [backdrop, setBackdrop] = useState<Backdrop | null>(null);
 
   return (
     <form action={action} className="space-y-6">
@@ -36,6 +48,25 @@ export function NewEventForm({ groupId, slug }: { groupId: string; slug: string 
         <Label htmlFor="description">Beskrivelse</Label>
         <Textarea id="description" name="description" rows={3} />
       </div>
+
+      <details className="group rounded-2xl border bg-card">
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-4 text-sm">
+          <span className={cn("size-8 shrink-0 rounded-lg border", backdrop ? backdropClass[backdrop] : groupSurfaceClass)} />
+          <span className="flex-1">
+            <span className="block font-medium">Bakgrunn</span>
+            <span className="text-xs text-muted-foreground">{backdrop ? backdropLabel[backdrop] : "Som flokken"}</span>
+          </span>
+          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t p-4">
+          <input type="hidden" name="backdrop" value={backdrop ?? ""} />
+          <BackdropPicker
+            value={backdrop}
+            onChange={setBackdrop}
+            inherit={{ label: "Som flokken", className: groupSurfaceClass }}
+          />
+        </div>
+      </details>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Forslag til tidspunkt</legend>

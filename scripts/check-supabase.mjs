@@ -88,6 +88,11 @@ if (loc.body?.code === "42703" || loc.body?.code === "PGRST204")
   bad("Mangler koordinater for sted på arrangementer", "Kjør 20261110160000_event_location.sql");
 else ok("Adressesøk/kartlenke for arrangementer er satt opp (migrasjon 9)");
 
+const evbg = await call("/rest/v1/events?select=backdrop&limit=1");
+if (evbg.body?.code === "42703" || evbg.body?.code === "PGRST204")
+  bad("Mangler bakgrunn for arrangementer", "Kjør 20261110180000_event_backdrop.sql");
+else ok("Bakgrunn for arrangementer er satt opp (migrasjon 10)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

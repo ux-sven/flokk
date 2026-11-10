@@ -24,6 +24,7 @@ Rekkefølgen er viktig. Velg én av måtene:
 7. `supabase/migrations/20261110120000_members_and_archive.sql`
 8. `supabase/migrations/20261110150000_group_backdrop.sql`
 9. `supabase/migrations/20261110160000_event_location.sql`
+10. `supabase/migrations/20261110180000_event_backdrop.sql`
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 

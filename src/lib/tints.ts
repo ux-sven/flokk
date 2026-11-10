@@ -56,3 +56,12 @@ export function groupSurface(g: { tint?: string | null; backdrop?: string | null
   const b = asBackdrop(g?.backdrop);
   return b ? backdropClass[b] : tintBg[asTint(g?.tint)];
 }
+
+/** Arrangementets flate: egen bakgrunn hvis valgt, ellers flokkens utseende. */
+export function eventSurface(
+  e: { backdrop?: string | null } | null | undefined,
+  g: { tint?: string | null; backdrop?: string | null } | null | undefined,
+): string {
+  const b = asBackdrop(e?.backdrop);
+  return b ? backdropClass[b] : groupSurface(g);
+}
