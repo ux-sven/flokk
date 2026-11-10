@@ -51,3 +51,16 @@ export function slugify(input: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
 }
+
+/** Deler av en dato for kalender-flis: { weekday: "lør.", day: "13", month: "des.", time: "18:00", long: "lørdag 13. desember" } */
+export function dateParts(iso: string) {
+  const d = new Date(iso);
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("nb-NO", { ...o, timeZone: TZ }).format(d);
+  return {
+    weekday: f({ weekday: "short" }).replace(".", ""),
+    day: f({ day: "numeric" }).replace(".", ""),
+    month: f({ month: "short" }).replace(".", ""),
+    time: formatTime(iso),
+    long: f({ weekday: "long", day: "numeric", month: "long" }),
+  };
+}
