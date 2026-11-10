@@ -33,7 +33,7 @@ export function GroupAppearanceButton({
   }
 
   return (
-    <AppearancePopover error={error}>
+    <AppearancePopover error={error} iconOnly>
       <AppearancePicker value={value} onChange={change} disabled={pending} />
     </AppearancePopover>
   );

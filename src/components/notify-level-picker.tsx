@@ -13,7 +13,7 @@ export function NotifyLevelPicker({ groupId, slug, level }: { groupId: string; s
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="space-y-3 rounded-3xl bg-card p-5 shadow-sm">
+    <section className="space-y-3 rounded-3xl bg-card p-5 shadow-card">
       <h2 className="flex items-center gap-2 text-xl font-semibold">
         <BellRing className="size-5" /> Varsler
       </h2>

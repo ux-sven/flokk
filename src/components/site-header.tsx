@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
+import { MemberAvatar } from "@/components/member-avatar";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { NOTIFICATION_LIMIT, NOTIFICATION_SELECT, type AppNotification } from "@/lib/notifications";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -29,14 +30,19 @@ async function UserActions() {
   await connection(); // brukerdata hentes alltid ved forespørsel
   const user = isSupabaseConfigured ? await getUser() : null;
   let notifications: AppNotification[] = [];
+  let profile: { display_name: string; avatar_url: string | null } | null = null;
   if (user) {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("notifications")
-      .select(NOTIFICATION_SELECT)
-      .order("updated_at", { ascending: false })
-      .limit(NOTIFICATION_LIMIT);
+    const [{ data }, { data: me }] = await Promise.all([
+      supabase
+        .from("notifications")
+        .select(NOTIFICATION_SELECT)
+        .order("updated_at", { ascending: false })
+        .limit(NOTIFICATION_LIMIT),
+      supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).maybeSingle(),
+    ]);
     notifications = (data ?? []) as unknown as AppNotification[];
+    profile = me;
   }
   return (
     <>
@@ -45,6 +51,9 @@ async function UserActions() {
               <NotificationBell userId={user.id} initial={notifications} />
               <Link href="/grupper/ny" className={buttonVariants({ size: "lg" })}>
                 <Plus /> Ny flokk
+              </Link>
+              <Link href="/konto" aria-label="Min profil" title="Min profil" className="rounded-full ring-offset-2 ring-offset-background transition-shadow hover:ring-2 hover:ring-ring/50">
+                <MemberAvatar name={profile?.display_name || "?"} src={profile?.avatar_url} className="size-9" />
               </Link>
               <form action="/auth/logout" method="post">
                 <button type="submit" className={buttonVariants({ variant: "ghost", size: "lg" })}>

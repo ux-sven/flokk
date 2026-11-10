@@ -66,7 +66,7 @@ async function Dashboard({ userId }: { userId: string }) {
           </Link>
         </div>
         {groups.length === 0 ? (
-          <div className="rounded-3xl bg-card p-8 text-muted-foreground">
+          <div className="rounded-3xl bg-card p-8 text-muted-foreground shadow-card">
             Du er ikke med i noen flokk ennå. Opprett en, eller åpne en invitasjonslenke du har fått.
           </div>
         ) : (
@@ -76,7 +76,7 @@ async function Dashboard({ userId }: { userId: string }) {
                 key={g.id}
                 href={`/${g.slug}`}
                 className={cn(
-                  "flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-3xl p-4 text-center transition-transform hover:-translate-y-0.5",
+                  "flex aspect-[5/4] flex-col items-center justify-center gap-2 rounded-3xl p-4 text-center shadow-card transition-[translate,box-shadow] hover:-translate-y-0.5 hover:shadow-card-hover",
                   groupSurface(g),
                 )}
               >
@@ -100,7 +100,7 @@ async function Dashboard({ userId }: { userId: string }) {
               <Link
                 key={e.id}
                 href={`/${e.groups?.slug}/arrangement/${e.id}`}
-                className="group overflow-hidden rounded-3xl bg-card shadow-sm transition-shadow hover:shadow-md"
+                className="group overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
               >
                 <div className={cn("h-24", eventSurface(e, e.groups))} />
                 <div className="space-y-1 p-5">
@@ -144,7 +144,7 @@ function Landing() {
         {features.map(({ icon: Icon, title, text }, i) => (
           <div
             key={title}
-            className={cn("rounded-3xl p-6", tintBg[(["lime", "mint", "sky", "lilac"] as const)[i]])}
+            className={cn("rounded-3xl p-6 shadow-card", tintBg[(["lime", "mint", "sky", "lilac"] as const)[i]])}
           >
             <Icon className="size-6" />
             <h2 className="mt-4 font-semibold">{title}</h2>
@@ -159,7 +159,7 @@ function Landing() {
 function SetupNotice() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-16">
-      <div className="space-y-3 rounded-3xl bg-card p-8">
+      <div className="space-y-3 rounded-3xl bg-card p-8 shadow-card">
         <h1 className="text-2xl font-bold">Supabase er ikke koblet til ennå</h1>
         <p className="text-muted-foreground">
           Kopier <code>.env.example</code> til <code>.env.local</code> og fyll inn URL og publishable key

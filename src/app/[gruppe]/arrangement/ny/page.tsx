@@ -28,7 +28,7 @@ async function NewEventPageContent({ params }: PageProps<"/[gruppe]/arrangement/
       <Link href={`/${group.slug}`} className="text-sm text-muted-foreground hover:underline">
         ← {group.name}
       </Link>
-      <div className="mt-3 rounded-3xl bg-card p-6 shadow-sm sm:p-8">
+      <div className="mt-3 rounded-3xl bg-card p-6 shadow-card sm:p-8">
         <h1 className="mb-6 text-2xl font-bold">Nytt arrangement</h1>
         <NewEventForm groupId={group.id} slug={group.slug} groupSurfaceClass={groupSurface(group)} />
       </div>

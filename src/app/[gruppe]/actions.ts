@@ -14,11 +14,13 @@ export async function joinGroup(groupId: string, slug: string) {
   revalidatePath(`/${slug}`);
 }
 
-export async function leaveGroup(groupId: string, slug: string) {
+export async function leaveGroup(groupId: string, slug: string, redirectTo = "/") {
   const user = await requireUser(`/${slug}`);
   const supabase = await createClient();
   await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", user.id);
-  redirect("/");
+  revalidatePath("/", "layout");
+  // Kun interne stier, aldri «//annet-domene»
+  redirect(redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/");
 }
 
 export async function createInviteLink(groupId: string, slug: string) {

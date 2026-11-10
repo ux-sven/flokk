@@ -38,7 +38,7 @@ async function InvitationPageContent({ params, searchParams }: PageProps<"/invit
 
   return (
     <main className="flex flex-1 items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4 rounded-3xl bg-card p-8 text-center shadow-sm">
+      <div className="w-full max-w-md space-y-4 rounded-3xl bg-card p-8 text-center shadow-card">
         {!invite || !invite.valid ? (
           <>
             <h1 className="text-2xl font-bold">Invitasjonen er ugyldig</h1>

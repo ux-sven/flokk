@@ -10,8 +10,9 @@ import { CopyLink } from "@/components/copy-link";
 import { GroupAppearanceButton } from "@/components/group-appearance-button";
 import { InvitePanel } from "@/components/invite-panel";
 import { MarkRead } from "@/components/mark-read";
-import { MemberAvatar } from "@/components/member-avatar";
+import { OnlineNow, PresenceAvatar, PresenceProvider } from "@/components/presence";
 import { NotifyLevelPicker } from "@/components/notify-level-picker";
+import { LeaveGroupButton } from "@/components/leave-group-button";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
@@ -19,7 +20,7 @@ import { asBackdrop, asTint, eventSurface, groupSurface } from "@/lib/tints";
 import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { joinGroup, leaveGroup } from "./actions";
+import { joinGroup } from "./actions";
 
 const roleLabel = { owner: "Eier", admin: "Admin", member: "" } as const;
 
@@ -42,14 +43,25 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
-      <header className={cn("rounded-3xl p-6 sm:p-8", groupSurface(group))}>
-        <div className="flex flex-wrap items-start gap-4">
+      <header className={cn("relative rounded-3xl p-6 shadow-card sm:p-8", groupSurface(group))}>
+        <div className="absolute top-3 right-3 flex gap-1.5 sm:top-4 sm:right-4">
+          <CopyLink path={`/${group.slug}`} iconOnly />
+          {isAdmin && (
+            <GroupAppearanceButton
+              key={`${group.tint}:${group.backdrop}`}
+              groupId={group.id}
+              slug={group.slug}
+              initial={{ tint: asTint(group.tint), backdrop: asBackdrop(group.backdrop) }}
+            />
+          )}
+        </div>
+        <div className={cn("flex flex-wrap items-start gap-4", isAdmin ? "pr-20" : "pr-10")}>
           <span className="text-5xl" aria-hidden>
             {group.emoji ?? "🪺"}
           </span>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-bold tracking-tight">{group.name}</h1>
+              <h1 className="min-w-0 text-3xl font-bold tracking-tight break-words hyphens-auto">{group.name}</h1>
               <Badge variant="secondary" className="gap-1">
                 {group.visibility === "open" ? <Globe /> : <Lock />}
                 {group.visibility === "open" ? "Åpen" : "Kun inviterte"}
@@ -57,16 +69,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
             </div>
             {group.description && <p className="max-w-2xl opacity-80">{group.description}</p>}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <CopyLink path={`/${group.slug}`} />
-            {isAdmin && (
-              <GroupAppearanceButton
-                key={`${group.tint}:${group.backdrop}`}
-                groupId={group.id}
-                slug={group.slug}
-                initial={{ tint: asTint(group.tint), backdrop: asBackdrop(group.backdrop) }}
-              />
-            )}
+          <div className="flex flex-wrap gap-2 empty:hidden">
             {!user && (
               <Link href={`/login?next=/${group.slug}`} className={buttonVariants({ size: "lg" })}>
                 Logg inn for å bli med
@@ -87,6 +90,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
         <MemberView
           supabase={supabase}
           groupId={group.id}
+          groupName={group.name}
           slug={group.slug}
           userId={user.id}
           isAdmin={isAdmin}
@@ -102,6 +106,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
 async function MemberView({
   supabase,
   groupId,
+  groupName,
   slug,
   userId,
   isAdmin,
@@ -109,6 +114,7 @@ async function MemberView({
 }: {
   supabase: Awaited<ReturnType<typeof loadGroup>>["supabase"];
   groupId: string;
+  groupName: string;
   slug: string;
   userId: string;
   isAdmin: boolean;
@@ -155,108 +161,111 @@ async function MemberView({
   }[];
   const names = Object.fromEntries(members.map((m) => [m.user_id, m.profiles?.display_name || "Medlem"]));
 
+  const people = members.map((m) => ({ id: m.user_id, name: names[m.user_id], avatar: m.profiles?.avatar_url }));
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-      <div className="space-y-6">
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-bold tracking-tight">Arrangementer</h2>
-            <Link href={`/${slug}/arrangement/ny`} className={buttonVariants({ size: "lg" })}>
-              <CalendarPlus /> Nytt arrangement
-            </Link>
-          </div>
-          {!eventList.length ? (
-            <div className="rounded-3xl bg-card p-6 text-muted-foreground">
-              Ingen arrangementer ennå. Foreslå noen tidspunkter og la flokken stemme!
+    <PresenceProvider groupId={groupId} userId={userId}>
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="space-y-6">
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-bold tracking-tight">Arrangementer</h2>
+              <Link href={`/${slug}/arrangement/ny`} className={buttonVariants({ size: "lg" })}>
+                <CalendarPlus /> Nytt arrangement
+              </Link>
             </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {eventList.map((e) => (
-                <Link
-                  key={e.id}
-                  href={`/${slug}/arrangement/${e.id}`}
-                  className="overflow-hidden rounded-3xl bg-card shadow-sm transition-shadow hover:shadow-md"
-                >
-                  {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
-                  <div className="space-y-1 p-5">
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      {e.chosen?.starts_at
-                        ? formatDateTime(e.chosen.starts_at)
-                        : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
-                    </p>
-                    <p className="font-semibold">{e.title}</p>
-                    {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-          {!!archived?.length && (
-            <details className="group rounded-3xl bg-card/60 px-5 py-3">
-              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Archive className="size-4" /> Arkiverte arrangementer · {archived.length}
-                <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <ul className="mt-3 space-y-1">
-                {archived.map((e) => (
-                  <li key={e.id}>
-                    <Link
-                      href={`/${slug}/arrangement/${e.id}`}
-                      className="flex justify-between gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
-                    >
-                      <span className="truncate">{e.title}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        arkivert {formatDateTime(e.archived_at as string)}
-                      </span>
-                    </Link>
-                  </li>
+            {!eventList.length ? (
+              <div className="rounded-3xl bg-card p-6 text-muted-foreground shadow-card">
+                Ingen arrangementer ennå. Foreslå noen tidspunkter og la flokken stemme!
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {eventList.map((e) => (
+                  <Link
+                    key={e.id}
+                    href={`/${slug}/arrangement/${e.id}`}
+                    className="overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
+                  >
+                    {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
+                    <div className="space-y-1 p-5">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        {e.chosen?.starts_at
+                          ? formatDateTime(e.chosen.starts_at)
+                          : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
+                      </p>
+                      <p className="font-semibold">{e.title}</p>
+                      {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
+                    </div>
+                  </Link>
                 ))}
-              </ul>
-            </details>
-          )}
-        </section>
+              </div>
+            )}
+            {!!archived?.length && (
+              <details className="group rounded-3xl bg-card/60 px-5 py-3 shadow-card">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Archive className="size-4" /> Arkiverte arrangementer · {archived.length}
+                  <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" />
+                </summary>
+                <ul className="mt-3 space-y-1">
+                  {archived.map((e) => (
+                    <li key={e.id}>
+                      <Link
+                        href={`/${slug}/arrangement/${e.id}`}
+                        className="flex justify-between gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
+                      >
+                        <span className="truncate">{e.title}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          arkivert {formatDateTime(e.archived_at as string)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
 
-        <MarkRead groupId={groupId} />
-        <div id="chat" className="scroll-mt-20">
-          <Chat
-            title="Gruppechat"
-            groupId={groupId}
-            currentUserId={userId}
-            names={names}
-            initialMessages={((messages ?? []) as Message[]).reverse()}
-          />
+          <MarkRead groupId={groupId} />
+          <div id="chat" className="scroll-mt-20">
+            <Chat
+              title="Gruppechat"
+              groupId={groupId}
+              currentUserId={userId}
+              names={names}
+              initialMessages={((messages ?? []) as Message[]).reverse()}
+            />
+          </div>
         </div>
-      </div>
 
-      <aside className="space-y-6">
-        <section className="space-y-4 rounded-3xl bg-card p-5 shadow-sm">
-          <h2 className="text-xl font-semibold">Medlemmer · {members.length}</h2>
-          <ul className="space-y-3">
-            {members.map((m) => (
-              <li key={m.user_id} className="flex items-center gap-3">
-                <MemberAvatar name={names[m.user_id]} src={m.profiles?.avatar_url} className="size-9" />
-                <span className="flex-1 truncate text-sm font-medium">
-                  {names[m.user_id]}
-                  {m.user_id === userId && <span className="text-muted-foreground"> (deg)</span>}
-                </span>
-                {roleLabel[m.role] && <Badge variant="secondary">{roleLabel[m.role]}</Badge>}
-                {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
-                  <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
-                )}
-              </li>
-            ))}
-          </ul>
-          {isAdmin && <InvitePanel groupId={groupId} slug={slug} />}
-        </section>
-        <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
-        {!isOwner && (
-          <form action={leaveGroup.bind(null, groupId, slug)}>
-            <Button type="submit" variant="ghost" className="w-full text-muted-foreground">
-              Forlat flokken
-            </Button>
-          </form>
-        )}
-      </aside>
-    </div>
+        <aside className="space-y-6">
+          <section className="space-y-4 rounded-3xl bg-card p-5 shadow-card">
+            <h2 className="text-xl font-semibold">Medlemmer · {members.length}</h2>
+            <OnlineNow people={people} currentUserId={userId} className="rounded-2xl bg-emerald-500/10 px-3 py-2" />
+            <ul className="space-y-3">
+              {members.map((m) => (
+                <li key={m.user_id} className="flex items-center gap-3">
+                  <PresenceAvatar userId={m.user_id} name={names[m.user_id]} src={m.profiles?.avatar_url} className="size-9" />
+                  <span className="flex-1 truncate text-sm font-medium">
+                    {names[m.user_id]}
+                    {m.user_id === userId && <span className="text-muted-foreground"> (deg)</span>}
+                  </span>
+                  {roleLabel[m.role] && <Badge variant="secondary">{roleLabel[m.role]}</Badge>}
+                  {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
+                    <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
+                  )}
+                </li>
+              ))}
+            </ul>
+            {isAdmin && <InvitePanel groupId={groupId} slug={slug} />}
+          </section>
+          <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
+          {isOwner ? (
+            <p className="px-2 text-center text-xs text-muted-foreground">Du er eier av flokken og kan derfor ikke melde deg ut.</p>
+          ) : (
+            <LeaveGroupButton groupId={groupId} slug={slug} name={groupName} />
+          )}
+        </aside>
+      </div>
+    </PresenceProvider>
   );
 }

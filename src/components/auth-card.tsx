@@ -3,7 +3,7 @@ import Link from "next/link";
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <main className="flex flex-1 items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-3xl bg-card p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-3xl bg-card p-8 shadow-card">
         <Link href="/" className="text-lg font-extrabold tracking-tight">
           FLOKK.
         </Link>

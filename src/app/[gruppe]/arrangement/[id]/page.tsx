@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
 import { EventAppearanceButton } from "@/components/event-appearance-button";
 import { EventAdminActions } from "@/components/event-admin-actions";
+import { OnlineNow, PresenceProvider } from "@/components/presence";
 import { MarkRead } from "@/components/mark-read";
 import { CopyLink } from "@/components/copy-link";
 import { TaskList } from "@/components/task-list";
@@ -87,116 +88,119 @@ async function EventPageContent({ params }: Params) {
   const canSuggest = !isArchived && (canManage || (event.allow_time_suggestions && event.status === "planning"));
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href={`/${group.slug}`} className="text-sm text-muted-foreground hover:underline">
-          ← {group.name}
-        </Link>
-        {canManage && (
-          <div className="flex flex-wrap gap-2">
-            <EventAppearanceButton
-              key={event.backdrop ?? "none"}
-              slug={group.slug}
-              eventId={event.id}
-              initial={asBackdrop(event.backdrop)}
-              groupSurfaceClass={groupSurface(group)}
-            />
-            <EventAdminActions slug={group.slug} eventId={event.id} title={event.title} archived={isArchived} />
-          </div>
-        )}
-      </div>
-
-      {isArchived && (
-        <p className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-          <Archive className="size-4 shrink-0" />
-          Arrangementet er arkivert {formatDateTime(event.archived_at as string)} og vises ikke lenger i flokkens liste.
-        </p>
-      )}
-
-      <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", eventSurface(event, group))}>
-        <div className="flex flex-wrap items-start gap-3">
-          <h1 className="flex-1 text-3xl font-bold tracking-tight">{event.title}</h1>
-          <CopyLink path={`/${group.slug}/arrangement/${event.id}`} />
-        </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          {chosen ? (
-            <Badge className="gap-1">
-              <CalendarCheck /> {formatDateTime(chosen.starts_at)}
-            </Badge>
-          ) : (
-            <Badge variant="secondary">Stemming pågår</Badge>
-          )}
-          {event.location &&
-            (event.location_lat != null && event.location_lng != null ? (
-              <a
-                href={mapsUrl(event.location_lat, event.location_lng)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 underline decoration-current/40 underline-offset-4 hover:decoration-current"
-                title="Åpne i Google Maps"
-              >
-                <MapPin className="size-4" /> {event.location}
-                <ExternalLink className="size-3.5 opacity-70" />
-                <span className="sr-only">(åpnes i Google Maps)</span>
-              </a>
-            ) : (
-              <span className="flex items-center gap-1">
-                <MapPin className="size-4" /> {event.location}
-              </span>
-            ))}
-        </div>
-        {event.description && <p className="max-w-3xl whitespace-pre-wrap opacity-80">{event.description}</p>}
-      </header>
-
-      <section className="space-y-3 rounded-3xl bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">Når passer det?</h2>
+    <PresenceProvider groupId={group.id} userId={user.id}>
+      <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href={`/${group.slug}`} className="text-sm text-muted-foreground hover:underline">
+            ← {group.name}
+          </Link>
           {canManage && (
-            <SuggestionsToggle slug={group.slug} eventId={event.id} allowed={event.allow_time_suggestions} />
+            <div className="flex flex-wrap gap-2">
+              <EventAppearanceButton
+                key={event.backdrop ?? "none"}
+                slug={group.slug}
+                eventId={event.id}
+                initial={asBackdrop(event.backdrop)}
+                groupSurfaceClass={groupSurface(group)}
+              />
+              <EventAdminActions slug={group.slug} eventId={event.id} title={event.title} archived={isArchived} />
+            </div>
           )}
         </div>
-        <VoteGrid
-          slug={group.slug}
-          eventId={event.id}
-          eventCreatorId={event.created_by}
-          options={opts.map(({ id, starts_at, created_by }) => ({ id, starts_at, created_by }))}
-          initialVotes={votes}
-          people={people}
-          currentUserId={user.id}
-          canManage={canManage}
-          chosenOptionId={event.chosen_option_id}
-        />
-        {canSuggest ? (
-          <SuggestTime slug={group.slug} eventId={event.id} isOrganizer={canManage} />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {isArchived
-              ? "Arrangementet er arkivert, så nye forslag er stengt."
-              : event.status === "planning"
-              ? "Arrangøren har stengt for nye forslag."
-              : "Tidspunktet er valgt, så nye forslag er stengt."}
+
+        {isArchived && (
+          <p className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+            <Archive className="size-4 shrink-0" />
+            Arrangementet er arkivert {formatDateTime(event.archived_at as string)} og vises ikke lenger i flokkens liste.
           </p>
         )}
-      </section>
 
-      <MarkRead groupId={group.id} eventId={event.id} />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <TaskList
-          slug={group.slug}
-          eventId={event.id}
-          tasks={tasks ?? []}
-          people={people}
-          currentUserId={user.id}
-        />
-        <Chat
-          title="Chat for arrangementet"
-          groupId={group.id}
-          eventId={event.id}
-          currentUserId={user.id}
-          names={names}
-          initialMessages={((messages ?? []) as Message[]).reverse()}
-        />
-      </div>
-    </main>
+        <header className={cn("space-y-3 rounded-3xl p-6 shadow-card sm:p-8", eventSurface(event, group))}>
+          <div className="flex flex-wrap items-start gap-3">
+            <h1 className="flex-1 text-3xl font-bold tracking-tight">{event.title}</h1>
+            <CopyLink path={`/${group.slug}/arrangement/${event.id}`} />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {chosen ? (
+              <Badge className="gap-1">
+                <CalendarCheck /> {formatDateTime(chosen.starts_at)}
+              </Badge>
+            ) : (
+              <Badge variant="secondary">Stemming pågår</Badge>
+            )}
+            {event.location &&
+              (event.location_lat != null && event.location_lng != null ? (
+                <a
+                  href={mapsUrl(event.location_lat, event.location_lng)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                  title="Åpne i Google Maps"
+                >
+                  <MapPin className="size-4" /> {event.location}
+                  <ExternalLink className="size-3.5 opacity-70" />
+                  <span className="sr-only">(åpnes i Google Maps)</span>
+                </a>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-4" /> {event.location}
+                </span>
+              ))}
+          </div>
+          {event.description && <p className="max-w-3xl whitespace-pre-wrap opacity-80">{event.description}</p>}
+          <OnlineNow people={people} currentUserId={user.id} />
+        </header>
+
+        <section className="space-y-3 rounded-3xl bg-card p-5 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xl font-semibold">Når passer det?</h2>
+            {canManage && (
+              <SuggestionsToggle slug={group.slug} eventId={event.id} allowed={event.allow_time_suggestions} />
+            )}
+          </div>
+          <VoteGrid
+            slug={group.slug}
+            eventId={event.id}
+            eventCreatorId={event.created_by}
+            options={opts.map(({ id, starts_at, created_by }) => ({ id, starts_at, created_by }))}
+            initialVotes={votes}
+            people={people}
+            currentUserId={user.id}
+            canManage={canManage}
+            chosenOptionId={event.chosen_option_id}
+          />
+          {canSuggest ? (
+            <SuggestTime slug={group.slug} eventId={event.id} isOrganizer={canManage} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {isArchived
+                ? "Arrangementet er arkivert, så nye forslag er stengt."
+                : event.status === "planning"
+                ? "Arrangøren har stengt for nye forslag."
+                : "Tidspunktet er valgt, så nye forslag er stengt."}
+            </p>
+          )}
+        </section>
+
+        <MarkRead groupId={group.id} eventId={event.id} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <TaskList
+            slug={group.slug}
+            eventId={event.id}
+            tasks={tasks ?? []}
+            people={people}
+            currentUserId={user.id}
+          />
+          <Chat
+            title="Chat for arrangementet"
+            groupId={group.id}
+            eventId={event.id}
+            currentUserId={user.id}
+            names={names}
+            initialMessages={((messages ?? []) as Message[]).reverse()}
+          />
+        </div>
+      </main>
+    </PresenceProvider>
   );
 }

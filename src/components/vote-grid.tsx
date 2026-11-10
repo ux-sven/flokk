@@ -216,7 +216,7 @@ export function VoteGrid({
             <li
               key={o.id}
               className={cn(
-                "relative rounded-2xl border bg-card p-4 transition-shadow",
+                "relative rounded-2xl border bg-card p-4 shadow-card transition-shadow",
                 chosen && "border-emerald-500 ring-2 ring-emerald-500/30",
                 locked && !chosen && "opacity-60",
                 isBest && "border-emerald-300 dark:border-emerald-800",

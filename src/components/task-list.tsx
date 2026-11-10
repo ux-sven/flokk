@@ -28,7 +28,7 @@ export function TaskList({
   const done = tasks.filter((t) => t.status === "done").length;
 
   return (
-    <section className="space-y-4 rounded-3xl bg-card p-5 shadow-sm">
+    <section className="space-y-4 rounded-3xl bg-card p-5 shadow-card">
       <div className="flex items-baseline justify-between">
         <h2 className="text-xl font-semibold">Oppgaver</h2>
         {tasks.length > 0 && (

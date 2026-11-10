@@ -65,7 +65,7 @@ export function Chat({ groupId, eventId = null, currentUserId, names, initialMes
   }
 
   return (
-    <section className="flex h-[28rem] flex-col rounded-3xl bg-card shadow-sm">
+    <section className="flex h-[28rem] flex-col rounded-3xl bg-card shadow-card">
       <h2 className="px-5 pt-5 text-xl font-semibold">{title}</h2>
       <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {messages.length === 0 && <p className="text-sm text-muted-foreground">Ingen meldinger ennå. Si hei!</p>}
