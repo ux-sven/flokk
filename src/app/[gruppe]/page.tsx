@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Loading from "@/app/loading";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarPlus, Globe, Lock } from "lucide-react";
+import { Archive, CalendarPlus, ChevronDown, Globe, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Chat } from "@/components/chat";
@@ -11,6 +11,7 @@ import { InvitePanel } from "@/components/invite-panel";
 import { MarkRead } from "@/components/mark-read";
 import { MemberAvatar } from "@/components/member-avatar";
 import { NotifyLevelPicker } from "@/components/notify-level-picker";
+import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { formatDateTime } from "@/lib/format";
 import { asTint, tintBg } from "@/lib/tints";
@@ -104,13 +105,14 @@ async function MemberView({
   isAdmin: boolean;
   isOwner: boolean;
 }) {
-  const [members, { data: events }, { data: messages }, { data: me }] = await Promise.all([
+  const [members, { data: events }, { data: messages }, { data: me }, { data: archived }] = await Promise.all([
     loadMembers(groupId),
     supabase
       .from("events")
       .select("id, title, status, location, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
       .eq("group_id", groupId)
       .neq("status", "cancelled")
+      .is("archived_at", null)
       .order("created_at", { ascending: false }),
     supabase
       .from("messages")
@@ -125,6 +127,13 @@ async function MemberView({
       .eq("group_id", groupId)
       .eq("user_id", userId)
       .maybeSingle<{ notify_level: NotifyLevel }>(),
+    supabase
+      .from("events")
+      .select("id, title, archived_at")
+      .eq("group_id", groupId)
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false })
+      .limit(50),
   ]);
 
   const eventList = (events ?? []) as unknown as {
@@ -169,6 +178,29 @@ async function MemberView({
               ))}
             </div>
           )}
+          {!!archived?.length && (
+            <details className="group rounded-3xl bg-card/60 px-5 py-3">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Archive className="size-4" /> Arkiverte arrangementer · {archived.length}
+                <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <ul className="mt-3 space-y-1">
+                {archived.map((e) => (
+                  <li key={e.id}>
+                    <Link
+                      href={`/${slug}/arrangement/${e.id}`}
+                      className="flex justify-between gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
+                    >
+                      <span className="truncate">{e.title}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        arkivert {formatDateTime(e.archived_at as string)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
 
         <MarkRead groupId={groupId} />
@@ -195,6 +227,9 @@ async function MemberView({
                   {m.user_id === userId && <span className="text-muted-foreground"> (deg)</span>}
                 </span>
                 {roleLabel[m.role] && <Badge variant="secondary">{roleLabel[m.role]}</Badge>}
+                {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
+                  <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
+                )}
               </li>
             ))}
           </ul>

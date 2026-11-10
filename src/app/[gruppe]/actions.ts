@@ -156,3 +156,45 @@ export async function setNotifyLevel(groupId: string, slug: string, level: Notif
   if (error) console.error("[notify-level]", error.message);
   revalidatePath(`/${slug}`);
 }
+
+export async function removeMember(groupId: string, slug: string, memberId: string) {
+  const user = await requireUser(`/${slug}`);
+  if (memberId === user.id) return { error: "Bruk «Forlat flokken» for å melde deg ut." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("group_members")
+    .delete()
+    .eq("group_id", groupId)
+    .eq("user_id", memberId)
+    .select("user_id");
+  if (error) return { error: "Kunne ikke fjerne medlemmet." };
+  // RLS gir ingen feil, bare ingen rader, når man ikke har lov
+  if (!data?.length) return { error: "Du har ikke lov til å fjerne dette medlemmet." };
+  revalidatePath(`/${slug}`);
+  return { ok: true };
+}
+
+export async function setEventArchived(slug: string, eventId: string, archived: boolean) {
+  await requireUser(`/${slug}/arrangement/${eventId}`);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", eventId)
+    .select("id");
+  if (!data?.length) return { error: "Bare arrangøren eller en admin kan arkivere." };
+  revalidatePath(`/${slug}`);
+  revalidatePath(`/${slug}/arrangement/${eventId}`);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteEvent(slug: string, eventId: string) {
+  await requireUser(`/${slug}/arrangement/${eventId}`);
+  const supabase = await createClient();
+  const { data } = await supabase.from("events").delete().eq("id", eventId).select("id");
+  if (!data?.length) return { error: "Bare arrangøren eller en admin kan slette." };
+  revalidatePath(`/${slug}`);
+  revalidatePath("/");
+  redirect(`/${slug}`);
+}

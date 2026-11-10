@@ -73,6 +73,11 @@ if (notif.body?.code === "PGRST205" || notif.body?.code === "42P01")
 else if (notif.status === 200 && Array.isArray(notif.body) && notif.body.length) bad("Utloggede kan lese varsler!", "Sjekk RLS på notifications");
 else ok("Varsler er satt opp (migrasjon 5) og skjult for utloggede");
 
+const arch = await call("/rest/v1/events?select=archived_at&limit=1");
+if (arch.body?.code === "42703" || arch.body?.code === "PGRST204")
+  bad("Mangler arkivering av arrangementer", "Kjør 20261110120000_members_and_archive.sql");
+else ok("Arkivering og fjerning av medlemmer er satt opp (migrasjon 7)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

@@ -3,9 +3,10 @@ import Loading from "@/app/loading";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CalendarCheck, MapPin } from "lucide-react";
+import { Archive, CalendarCheck, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Chat } from "@/components/chat";
+import { EventAdminActions } from "@/components/event-admin-actions";
 import { MarkRead } from "@/components/mark-read";
 import { CopyLink } from "@/components/copy-link";
 import { TaskList } from "@/components/task-list";
@@ -44,7 +45,7 @@ async function EventPageContent({ params }: Params) {
 
   const { data: event } = await supabase
     .from("events")
-    .select("id, title, description, location, status, chosen_option_id, created_by, allow_time_suggestions")
+    .select("id, title, description, location, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
     .eq("id", id)
     .eq("group_id", group.id)
     .maybeSingle();
@@ -80,13 +81,26 @@ async function EventPageContent({ params }: Params) {
   const votes = opts.flatMap((o) => o.event_votes);
   const chosen = opts.find((o) => o.id === event.chosen_option_id);
   const canManage = isAdmin || event.created_by === user.id;
-  const canSuggest = canManage || (event.allow_time_suggestions && event.status === "planning");
+  const isArchived = Boolean(event.archived_at);
+  const canSuggest = !isArchived && (canManage || (event.allow_time_suggestions && event.status === "planning"));
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 py-8">
-      <Link href={`/${group.slug}`} className="text-sm text-muted-foreground hover:underline">
-        ← {group.name}
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={`/${group.slug}`} className="text-sm text-muted-foreground hover:underline">
+          ← {group.name}
+        </Link>
+        {canManage && (
+          <EventAdminActions slug={group.slug} eventId={event.id} title={event.title} archived={isArchived} />
+        )}
+      </div>
+
+      {isArchived && (
+        <p className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+          <Archive className="size-4 shrink-0" />
+          Arrangementet er arkivert {formatDateTime(event.archived_at as string)} og vises ikke lenger i flokkens liste.
+        </p>
+      )}
 
       <header className={cn("space-y-3 rounded-3xl p-6 sm:p-8", tintBg[asTint(group.tint)])}>
         <div className="flex flex-wrap items-start gap-3">
@@ -132,7 +146,9 @@ async function EventPageContent({ params }: Params) {
           <SuggestTime slug={group.slug} eventId={event.id} isOrganizer={canManage} />
         ) : (
           <p className="text-xs text-muted-foreground">
-            {event.status === "planning"
+            {isArchived
+              ? "Arrangementet er arkivert, så nye forslag er stengt."
+              : event.status === "planning"
               ? "Arrangøren har stengt for nye forslag."
               : "Tidspunktet er valgt, så nye forslag er stengt."}
           </p>

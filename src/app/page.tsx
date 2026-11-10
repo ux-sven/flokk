@@ -45,6 +45,7 @@ async function Dashboard({ userId }: { userId: string }) {
       .from("events")
       .select("id, title, status, location, groups(slug, name, tint), chosen:event_time_options!events_chosen_option_fk(starts_at)")
       .neq("status", "cancelled")
+      .is("archived_at", null)
       .order("created_at", { ascending: false })
       .limit(9),
   ]);
