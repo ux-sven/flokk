@@ -61,6 +61,8 @@ data class EventDetail(
     @SerialName("created_by") val createdBy: String,
     @SerialName("group_id") val groupId: String,
     val groups: GroupLook? = null,
+    @SerialName("allow_time_suggestions") val allowTimeSuggestions: Boolean = false,
+    @SerialName("archived_at") val archivedAt: String? = null,
 ) {
     @Serializable
     data class GroupLook(val tint: String? = null, val backdrop: String? = null)
@@ -88,6 +90,17 @@ data class TimeOption(
     @SerialName("created_by") val createdBy: String? = null,
     @SerialName("event_votes") val eventVotes: List<Vote> = emptyList(),
 )
+
+@Serializable
+data class EventTask(
+    val id: String,
+    val title: String,
+    @SerialName("assignee_id") val assigneeId: String? = null,
+    val status: String = "todo",
+    @SerialName("created_by") val createdBy: String? = null,
+) {
+    val isDone get() = status == "done"
+}
 
 @Serializable
 data class Message(

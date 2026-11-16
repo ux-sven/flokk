@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,8 @@ fun ProfileScreen() {
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val pushRegistered by PushManager.registered.collectAsState()
+    val pushError by PushManager.lastError.collectAsState()
 
     LaunchedEffect(user?.id) {
         val uid = user?.id ?: return@LaunchedEffect
@@ -87,8 +90,24 @@ fun ProfileScreen() {
                 status?.let { Text(it, fontSize = 13.sp) }
             }
         }
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Varsler", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
+                Text(
+                    if (pushRegistered) "Varsler er på for denne telefonen." else pushError ?: "Varsler er ikke slått på ennå.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (!pushRegistered) PushPrompt()
         OutlinedButton(
-            onClick = { scope.launch { runCatching { supabase.auth.signOut() } } },
+            onClick = {
+                scope.launch {
+                    PushManager.unregister()
+                    NotificationCenter.clear()
+                    runCatching { supabase.auth.signOut() }
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Logg ut", color = MaterialTheme.colorScheme.error) }
     }

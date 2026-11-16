@@ -99,6 +99,10 @@ fun ChatScreen(groupId: String, eventId: String?, onBack: () -> Unit) {
             withContext(NonCancellable) { supabase.realtime.removeChannel(channel) }
         }
     }
+    androidx.compose.runtime.DisposableEffect(groupId, eventId) {
+        AppRouter.visibleChat = groupId to eventId
+        onDispose { AppRouter.visibleChat = null }
+    }
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex) }
 
     fun send() {

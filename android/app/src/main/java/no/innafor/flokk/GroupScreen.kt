@@ -1,6 +1,25 @@
 package no.innafor.flokk
 
-import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
+import androidx.compose.runtime.rememberCoroutineScope
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,14 +68,60 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, onChat: (String) -> Unit) {
+fun GroupScreen(
+    groupId: String,
+    onBack: () -> Unit,
+    onEvent: (String) -> Unit,
+    onChat: (String) -> Unit,
+    onCreateEvent: (String) -> Unit,
+) {
     val me = supabase.auth.currentUserOrNull()?.id
     var group by remember { mutableStateOf<FlokkGroup?>(null) }
     var events by remember { mutableStateOf<List<EventSummary>>(emptyList()) }
     var members by remember { mutableStateOf<List<Member>>(emptyList()) }
     val online = rememberOnline(groupId, me)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var menuOpen by remember { mutableStateOf(false) }
+    var inviting by remember { mutableStateOf(false) }
+    var editingLook by remember { mutableStateOf(false) }
+    var confirmLeave by remember { mutableStateOf(false) }
+    var memberToRemove by remember { mutableStateOf<Member?>(null) }
+    var notifyLevel by remember { mutableStateOf("all") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val myRole = members.firstOrNull { it.userId == me }?.role
+    val isAdmin = myRole == "owner" || myRole == "admin"
+
+    fun canRemove(m: Member) = m.userId != me && (myRole == "owner" || (myRole == "admin" && m.role == "member"))
+
+    fun setNotify(level: String) {
+        val before = notifyLevel
+        notifyLevel = level
+        scope.launch {
+            runCatching {
+                supabase.postgrest.rpc("set_notify_level", buildJsonObject { put("gid", groupId); put("level", level) })
+            }.onFailure { notifyLevel = before; error = "Kunne ikke endre varslingsnivået." }
+        }
+    }
+
+    fun setLook(tint: String, backdrop: String?) {
+        val before = group
+        group = group?.copy(tint = tint, backdrop = backdrop)
+        scope.launch {
+            runCatching {
+                supabase.from("groups").update({
+                    set("tint", tint)
+                    set("backdrop", backdrop)
+                }) {
+                    select(Columns.raw("id"))
+                    filter { eq("id", groupId) }
+                }.decodeList<IdRow>()
+            }.onSuccess { if (it.isEmpty()) { group = before; error = "Bare admins kan endre utseendet." } else AppRouter.groupsVersion.value++ }
+                .onFailure { group = before; error = "Kunne ikke lagre utseendet." }
+        }
+    }
 
     LaunchedEffect(groupId) {
         runCatching {
@@ -75,6 +140,51 @@ fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, 
                 }.decodeList<EventSummary>()
         }
         runCatching { members = loadMembers(groupId) }
+        me?.let { uid ->
+            runCatching {
+                notifyLevel = supabase.from("group_members").select(Columns.raw("notify_level")) {
+                    filter { eq("group_id", groupId); eq("user_id", uid) }
+                }.decodeSingle<LevelRow>().notifyLevel
+            }
+        }
+    }
+
+    group?.let { g ->
+        if (inviting) InviteDialog(g) { inviting = false }
+        if (editingLook) AppearanceSheet(g.tint ?: "mint", g.backdrop, ::setLook) { editingLook = false }
+    }
+    if (confirmLeave) ConfirmDialog(
+        "Melde deg ut av ${group?.name}?",
+        "Du mister tilgang til arrangementer og chat, og oppgavene dine blir ledige igjen.",
+        "Meld meg ut",
+        onConfirm = {
+            scope.launch {
+                runCatching { supabase.from("group_members").delete { filter { eq("group_id", groupId); eq("user_id", me!!) } } }
+                    .onSuccess { AppRouter.groupsVersion.value++; onBack() }
+                    .onFailure { error = "Kunne ikke melde deg ut." }
+            }
+        },
+        onDismiss = { confirmLeave = false },
+    )
+    memberToRemove?.let { m ->
+        ConfirmDialog(
+            "Fjerne ${m.name}?",
+            "Personen mister tilgang til arrangementer og chat, og oppgavene blir ledige igjen.",
+            "Fjern fra flokken",
+            onConfirm = {
+                scope.launch {
+                    val rows = runCatching {
+                        supabase.from("group_members").delete {
+                            select(Columns.raw("user_id"))
+                            filter { eq("group_id", groupId); eq("user_id", m.userId) }
+                        }.decodeList<UserIdRow>()
+                    }.getOrNull()
+                    if (rows.isNullOrEmpty()) error = "Du har ikke lov til å fjerne dette medlemmet."
+                    members = runCatching { loadMembers(groupId) }.getOrDefault(members)
+                }
+            },
+            onDismiss = { memberToRemove = null },
+        )
     }
 
     Scaffold(
@@ -82,11 +192,42 @@ fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, 
         topBar = {
             BackBar(group?.name ?: "", onBack) {
                 group?.let { g ->
-                    IconButton(onClick = {
-                        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-                            .putExtra(Intent.EXTRA_TEXT, siteUrl("/${g.slug}"))
-                        context.startActivity(Intent.createChooser(send, "Del lenke til flokken"))
-                    }) { Icon(Icons.Default.Share, contentDescription = "Del lenke til flokken") }
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Valg for flokken") }
+                        DropdownMenu(menuOpen, { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Del lenke til flokken") }, leadingIcon = { Icon(Icons.Default.Share, null) },
+                                onClick = { menuOpen = false; shareText(context, siteUrl("/${g.slug}"), "Del lenke til flokken") },
+                            )
+                            if (isAdmin) {
+                                DropdownMenuItem(
+                                    text = { Text("Inviter folk") }, leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+                                    onClick = { menuOpen = false; inviting = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Utseende") }, leadingIcon = { Icon(Icons.Default.Palette, null) },
+                                    onClick = { menuOpen = false; editingLook = true },
+                                )
+                            }
+                            HorizontalDivider()
+                            Text("Varsler fra flokken", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+                            listOf("all" to "Alt", "important" to "Det viktigste", "none" to "Ingenting").forEach { (key, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    leadingIcon = { RadioButton(notifyLevel == key, onClick = null) },
+                                    onClick = { menuOpen = false; setNotify(key) },
+                                )
+                            }
+                            if (myRole != null && myRole != "owner") {
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Meld meg ut av flokken", color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) },
+                                    onClick = { menuOpen = false; confirmLeave = true },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -100,7 +241,16 @@ fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, 
         ) {
             item { GroupHeader(g) }
             if (others.isNotEmpty()) item { OnlineNowRow(others) }
-            item { Text("Arrangementer", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
+            item {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Arrangementer", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Button(onClick = { onCreateEvent(g.id) }) {
+                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Nytt")
+                    }
+                }
+            }
             if (events.isEmpty()) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
@@ -123,7 +273,14 @@ fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, 
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Medlemmer · ${members.size}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         members.forEach { m ->
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().combinedClickable(
+                                    onClick = {},
+                                    onLongClick = { if (canRemove(m)) memberToRemove = m },
+                                    onLongClickLabel = if (canRemove(m)) "Fjern fra flokken" else null,
+                                ),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
                                 Avatar(m.name, m.profiles?.avatarUrl, online = m.userId in online)
                                 Text(m.name + if (m.userId == me) " (deg)" else "", fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                                 roleLabel(m.role)?.let {
@@ -135,12 +292,24 @@ fun GroupScreen(groupId: String, onBack: () -> Unit, onEvent: (String) -> Unit, 
                                 }
                             }
                         }
+                        if (isAdmin) {
+                            OutlinedButton(onClick = { inviting = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Inviter folk")
+                            }
+                            Text("Hold inne på et medlem for å fjerne det.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
                 }
             }
         }
     }
 }
+
+@Serializable private data class LevelRow(@SerialName("notify_level") val notifyLevel: String)
+@Serializable private data class UserIdRow(@SerialName("user_id") val userId: String)
 
 suspend fun loadMembers(groupId: String): List<Member> =
     supabase.from("group_members").select(Columns.raw("user_id, role, profiles(id, display_name, avatar_url)")) {

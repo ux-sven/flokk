@@ -1,5 +1,5 @@
 // Supabase Edge Function: sender push når et varsel lages eller samles opp –
-// Web Push til nettlesere og APNs til iOS-appen.
+// Web Push til nettlesere, APNs til iOS-appen og FCM til Android-appen.
 //
 // Kalles på to måter:
 //  1. Database Webhook på public.notifications (INSERT og UPDATE), med
@@ -11,6 +11,8 @@
 //   SITE_URL (kommaseparert liste over adresser appen kjører på)
 //   iOS-appen (valgfritt): APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID og
 //   APNS_PRIVATE_KEY (innholdet i .p8-filen fra Apple Developer)
+//   Android-appen (valgfritt): FCM_SERVICE_ACCOUNT (hele JSON-nøkkelen til en
+//   tjenestekonto i Firebase-prosjektet)
 // SUPABASE_URL og SUPABASE_SERVICE_ROLE_KEY finnes automatisk.
 //
 // Deploy med «Verify JWT» slått AV – funksjonen sjekker selv hemmelighet/innlogging.
@@ -86,6 +88,87 @@ async function sendApns(token: string, environment: string, payload: PushPayload
     return "gone";
   }
   console.error("[send-push] APNs", res.status, reason);
+  return "error";
+}
+
+// ---------------------------------------------------------------------------
+// FCM (Firebase Cloud Messaging) for Android-appen, via HTTP v1-API-et
+type ServiceAccount = { project_id: string; client_email: string; private_key: string };
+const fcmAccount: ServiceAccount | null = (() => {
+  try {
+    return JSON.parse(env("FCM_SERVICE_ACCOUNT") || "null");
+  } catch {
+    console.error("[send-push] FCM_SERVICE_ACCOUNT er ikke gyldig JSON");
+    return null;
+  }
+})();
+const fcmReady = Boolean(fcmAccount?.project_id && fcmAccount?.client_email && fcmAccount?.private_key);
+if (!fcmReady) console.warn("[send-push] FCM er ikke satt opp – Android-appen får ikke push");
+
+let fcmKey: CryptoKey | null = null;
+let fcmAccess: { token: string; expiresAt: number } | null = null;
+
+/** Bytter en RS256-signert JWT mot et OAuth-token fra Google (gyldig en time). */
+async function fcmAccessToken(): Promise<string> {
+  if (fcmAccess && Date.now() < fcmAccess.expiresAt - 60_000) return fcmAccess.token;
+  const sa = fcmAccount!;
+  if (!fcmKey) {
+    const der = Uint8Array.from(atob(sa.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
+    fcmKey = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = `${encodeJson({ alg: "RS256", typ: "JWT" })}.${encodeJson({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  })}`;
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", fcmKey, new TextEncoder().encode(unsigned));
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: `${unsigned}.${b64url(new Uint8Array(sig))}`,
+    }),
+  });
+  const data = (await res.json()) as { access_token?: string; expires_in?: number; error?: string };
+  if (!data.access_token) throw new Error(`Google OAuth: ${data.error ?? res.status}`);
+  fcmAccess = { token: data.access_token, expiresAt: Date.now() + (data.expires_in ?? 3600) * 1000 };
+  return fcmAccess.token;
+}
+
+/**
+ * Sender en ren data-melding; appen viser selv varselet slik at et trykk kan
+ * åpne riktig skjerm. Returnerer «gone» når tokenet ikke lenger er gyldig.
+ */
+async function sendFcm(token: string, payload: PushPayload): Promise<"ok" | "gone" | "error"> {
+  const data: Record<string, string> = { title: payload.title, body: payload.body, url: payload.url };
+  if (payload.tag) data.tag = payload.tag;
+  if (payload.groupId) data.group_id = payload.groupId;
+  if (payload.eventId) data.event_id = payload.eventId;
+  if (payload.kind) data.kind = payload.kind;
+  if (payload.unread !== undefined) data.unread = String(payload.unread);
+
+  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${fcmAccount!.project_id}/messages:send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${await fcmAccessToken()}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      message: {
+        token,
+        data,
+        android: { priority: "HIGH", ttl: "86400s", ...(payload.tag ? { collapse_key: payload.tag.slice(0, 64) } : {}) },
+      },
+    }),
+  });
+  if (res.ok) return "ok";
+  const err = ((await res.json().catch(() => ({}))) as {
+    error?: { status?: string; details?: { errorCode?: string }[] };
+  }).error;
+  const code = err?.details?.find((d) => d.errorCode)?.errorCode ?? err?.status;
+  if (res.status === 404 || code === "UNREGISTERED" || (code === "INVALID_ARGUMENT" && res.status === 400)) return "gone";
+  console.error("[send-push] FCM", res.status, code);
   return "error";
 }
 
@@ -181,8 +264,12 @@ async function sendToUser(userId: string, payload: PushPayload) {
     vapidReady
       ? admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").eq("user_id", userId)
       : Promise.resolve({ data: [] }),
-    apnsReady
-      ? admin.from("device_tokens").select("id, token, platform, environment").eq("user_id", userId).eq("platform", "ios")
+    apnsReady || fcmReady
+      ? admin
+          .from("device_tokens")
+          .select("id, token, platform, environment")
+          .eq("user_id", userId)
+          .in("platform", [...(apnsReady ? ["ios"] : []), ...(fcmReady ? ["android"] : [])])
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -190,7 +277,8 @@ async function sendToUser(userId: string, payload: PushPayload) {
   const native = Promise.all(
     (devices ?? []).map(async (d) => {
       try {
-        const result = await sendApns(d.token, d.environment, payload);
+        const result =
+          d.platform === "android" ? await sendFcm(d.token, payload) : await sendApns(d.token, d.environment, payload);
         if (result === "ok") {
           sent++;
           await admin.from("device_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", d.id);
@@ -198,7 +286,7 @@ async function sendToUser(userId: string, payload: PushPayload) {
           await admin.from("device_tokens").delete().eq("id", d.id);
         }
       } catch (err) {
-        console.error("[send-push] APNs", (err as Error).message);
+        console.error(`[send-push] ${d.platform}`, (err as Error).message);
       }
     }),
   );
@@ -262,7 +350,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   const body = await req.json().catch(() => ({}));
-  if (!vapidReady && !apnsReady && (body.test || body.record)) return json({ error: "push-not-configured" }, 500);
+  if (!vapidReady && !apnsReady && !fcmReady && (body.test || body.record)) return json({ error: "push-not-configured" }, 500);
 
   // 1) Database Webhook
   const secret = env("PUSH_WEBHOOK_SECRET");

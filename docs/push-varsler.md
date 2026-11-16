@@ -1,7 +1,8 @@
 # Push-varsler på mobil og datamaskin
 
 Flokk sender varsler som vanlige systemvarsler, også når appen er lukket:
-Web Push til nettlesere og APNs til iOS-appen (se [iOS-appen (APNs)](#ios-appen-apns) nederst).
+Web Push til nettlesere, APNs til iOS-appen og FCM til Android-appen
+(se [iOS-appen (APNs)](#ios-appen-apns) og [Android-appen (FCM)](#android-appen-fcm) nederst).
 
 ```
 Noe skjer (melding, stemme, nytt arrangement …)
@@ -132,3 +133,32 @@ Deploy deretter `send-push` på nytt med innholdet i `supabase/functions/send-pu
 
 Utviklingsbygg fra Xcode bruker Apples sandkasse og App Store/TestFlight-bygg produksjon; appen
 oppgir selv hvilket miljø tokenet hører til, så samme nøkkel fungerer for begge.
+
+
+## Android-appen (FCM)
+
+`send-push` sender til Android-telefoner via Firebase Cloud Messaging (HTTP v1). Meldingene er rene
+data-meldinger, så appen bygger varselet selv og et trykk åpner riktig flokk, arrangement eller chat.
+Migrasjon 11 (`device_tokens`) brukes for både iOS og Android.
+
+### 1. Firebase-prosjekt (gratis, krever Google-konto)
+
+1. [console.firebase.google.com](https://console.firebase.google.com) → **Opprett prosjekt** (f.eks. «Flokk»).
+   Google Analytics kan slås av.
+2. **Legg til app → Android**, pakkenavn `no.innafor.flokk`, kallenavn «Flokk». SHA-1 trengs ikke.
+3. Last ned `google-services.json` og legg den i `android/app/` (filen er gitignorert).
+4. Bygg appen på nytt – Gradle oppdager filen og slår på push automatisk.
+
+### 2. Tjenestekonto for send-push
+
+1. Firebase → ⚙️ **Prosjektinnstillinger** → **Tjenestekontoer** → **Generer ny privat nøkkel**
+2. Edge Functions → **Secrets** → legg til `FCM_SERVICE_ACCOUNT` med **hele** innholdet i JSON-filen
+3. Deploy `send-push` på nytt med innholdet i `supabase/functions/send-push/index.ts`
+
+Hold JSON-nøkkelen hemmelig (den gir tilgang til å sende push i prosjektet) – ikke legg den i repoet.
+
+### 3. Test
+
+1. Kjør appen på en telefon eller emulator **med Google Play** og logg inn
+2. Trykk **Slå på varsler** og tillat. Under **Profil** skal det stå «Varsler er på for denne telefonen»
+3. Få noen til å skrive i en chat du er med i – varselet kommer på telefonen

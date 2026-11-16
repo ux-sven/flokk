@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Push (FCM) krever google-services.json fra Firebase-konsollen. Uten filen bygger
+// appen fortsatt, men push er slått av (se docs/push-varsler.md).
+val hasFirebase = file("google-services.json").exists()
+if (hasFirebase) apply(plugin = "com.google.gms.google-services")
+
 // Supabase-nøklene hentes fra webappens .env.local (samme prosjekt), så de aldri sjekkes inn.
 fun envLocal(key: String): String {
     val file = File(rootDir, "../.env.local")
@@ -29,6 +34,7 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"${envLocal("NEXT_PUBLIC_SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_KEY", "\"${envLocal("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")}\"")
         buildConfigField("String", "SITE_URL", "\"${envLocal("NEXT_PUBLIC_SITE_URL")}\"")
+        buildConfigField("boolean", "HAS_FIREBASE", hasFirebase.toString())
     }
 
     buildTypes {
@@ -72,4 +78,8 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+    implementation(libs.coroutines.play.services)
 }

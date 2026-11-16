@@ -68,9 +68,31 @@ import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import io.github.jan.supabase.postgrest.query.filter.FilterOperator
+import java.time.Instant
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 
 private const val EVENT_COLUMNS =
-    "id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, group_id, groups(tint, backdrop)"
+    "id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, group_id, groups(tint, backdrop), allow_time_suggestions, archived_at"
 
 @Composable
 fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) -> Unit) {
@@ -78,8 +100,40 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     var event by remember { mutableStateOf<EventDetail?>(null) }
     var options by remember { mutableStateOf<List<TimeOption>>(emptyList()) }
     var members by remember { mutableStateOf<List<Member>>(emptyList()) }
+    var tasks by remember { mutableStateOf<List<EventTask>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var suggesting by remember { mutableStateOf(false) }
+    var editingBackdrop by remember { mutableStateOf(false) }
+    var confirmChoose by remember { mutableStateOf<TimeOption?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val myRole = members.firstOrNull { it.userId == me }?.role
+    val canManage = myRole == "owner" || myRole == "admin" || event?.createdBy == me
+    val isArchived = event?.archivedAt != null
+    val canSuggest = event?.let { e -> !isArchived && e.chosenOptionId == null && (canManage || (e.allowTimeSuggestions && e.status == "planning")) } ?: false
+
+    suspend fun loadTasks() {
+        runCatching {
+            supabase.from("event_tasks").select(Columns.raw("id, title, assignee_id, status, created_by")) {
+                filter { eq("event_id", eventId) }
+                order("created_at", Order.ASCENDING)
+            }.decodeList<EventTask>()
+        }.onSuccess { tasks = it }
+    }
+
+    /** Oppdaterer arrangementet; tom liste betyr at RLS nektet. */
+    fun update(patch: JsonObject) {
+        scope.launch {
+            runCatching {
+                supabase.from("events").update(patch) {
+                    select(Columns.raw(EVENT_COLUMNS))
+                    filter { eq("id", eventId) }
+                }.decodeList<EventDetail>()
+            }.onSuccess { rows -> rows.firstOrNull()?.let { event = it } ?: run { error = "Bare arrangøren eller en admin kan endre dette." } }
+                .onFailure { error = "Kunne ikke lagre endringen." }
+        }
+    }
 
     suspend fun load() {
         try {
@@ -92,6 +146,7 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
                     order("starts_at", Order.ASCENDING)
                 }.decodeList()
             if (members.isEmpty()) members = runCatching { loadMembers(e.groupId) }.getOrDefault(emptyList())
+            loadTasks()
         } catch (e: Exception) {
             if (event == null) error = "Kunne ikke hente arrangementet."
         }
@@ -100,11 +155,19 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     // Stemmer oppdateres i sanntid
     LaunchedEffect(eventId) {
         load()
-        val channel = supabase.channel("votes:$eventId")
-        val changes = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = "event_votes" }
+        val channel = supabase.channel("event:$eventId")
+        val votes = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = "event_votes" }
+        val opts = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "event_time_options"
+            filter("event_id", FilterOperator.EQ, eventId)
+        }
+        val taskChanges = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+            table = "event_tasks"
+            filter("event_id", FilterOperator.EQ, eventId)
+        }
         try {
             channel.subscribe()
-            changes.collect { load() }
+            merge(votes, opts).collectLatestWith(taskChanges, onMain = { load() }, onTasks = { loadTasks() })
         } finally {
             withContext(NonCancellable) { supabase.realtime.removeChannel(channel) }
         }
@@ -135,7 +198,88 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
         }
     }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background, topBar = { BackBar(event?.title ?: "", onBack) }) { padding ->
+    if (suggesting) SuggestTimeDialog(onDismiss = { suggesting = false }) { date ->
+        val uid = me ?: return@SuggestTimeDialog "Du må være innlogget."
+        if (date.toInstant().isBefore(Instant.now())) return@SuggestTimeDialog "Tidspunktet har allerede vært."
+        try {
+            val created = supabase.from("event_time_options").insert(
+                buildJsonObject { put("event_id", eventId); put("starts_at", date.withSecond(0).withNano(0).toInstant().toString()) },
+            ) { select(Columns.raw("id")) }.decodeSingle<IdRow>()
+            runCatching { supabase.from("event_votes").upsert(Vote(created.id, uid, "yes")) }
+            load()
+            null
+        } catch (e: Exception) {
+            when {
+                e.message?.contains("23505") == true || e.message?.contains("duplicate") == true -> "Det tidspunktet er allerede foreslått."
+                e.message?.contains("42501") == true || e.message?.contains("row-level") == true -> "Forslag er stengt for dette arrangementet."
+                else -> "Kunne ikke legge til forslaget."
+            }
+        }
+    }
+    confirmChoose?.let { o ->
+        ConfirmDialog(
+            "Velge ${Fmt.dateTime(o.startsAt)}?", "Alle i flokken får beskjed, og stemmingen stenges.", "Velg tidspunktet",
+            onConfirm = { update(buildJsonObject { put("chosen_option_id", o.id); put("status", "scheduled") }) },
+            onDismiss = { confirmChoose = null },
+        )
+    }
+    if (confirmDelete) ConfirmDialog(
+        "Slette arrangementet?",
+        "Tidspunkter, stemmer, oppgaver og chat slettes for godt. Vil du bare skjule det, kan du arkivere i stedet.",
+        "Slett for alle",
+        onConfirm = {
+            scope.launch {
+                val rows = runCatching {
+                    supabase.from("events").delete { select(Columns.raw("id")); filter { eq("id", eventId) } }.decodeList<IdRow>()
+                }.getOrNull()
+                if (rows.isNullOrEmpty()) error = "Bare arrangøren eller en admin kan slette." else onBack()
+            }
+        },
+        onDismiss = { confirmDelete = false },
+    )
+    if (editingBackdrop) event?.let { e ->
+        BackdropSheet(e.backdrop?.takeIf { it in backdropDrawables }, e.groups?.backdrop to e.groups?.tint, { b ->
+            update(buildJsonObject { if (b == null) put("backdrop", JsonNull) else put("backdrop", b) })
+        }) { editingBackdrop = false }
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            BackBar(event?.title ?: "", onBack) {
+                if (canManage && event != null) {
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Administrer arrangementet") }
+                        DropdownMenu(menuOpen, { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Andre kan foreslå tidspunkt") },
+                                trailingIcon = { Switch(event?.allowTimeSuggestions == true, onCheckedChange = null) },
+                                onClick = { update(buildJsonObject { put("allow_time_suggestions", event?.allowTimeSuggestions != true) }) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Bakgrunn") }, leadingIcon = { Icon(Icons.Default.Palette, null) },
+                                onClick = { menuOpen = false; editingBackdrop = true },
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(if (isArchived) "Hent tilbake fra arkivet" else "Arkiver") },
+                                leadingIcon = { Icon(if (isArchived) Icons.Default.Unarchive else Icons.Default.Archive, null) },
+                                onClick = {
+                                    menuOpen = false
+                                    update(buildJsonObject { if (isArchived) put("archived_at", JsonNull) else put("archived_at", Instant.now().toString()) })
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Slett arrangementet", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                                onClick = { menuOpen = false; confirmDelete = true },
+                            )
+                        }
+                    }
+                }
+            }
+        },
+    ) { padding ->
         val e = event ?: return@Scaffold
         val names = members.associate { it.userId to it.name }
         val locked = e.chosenOptionId != null
@@ -144,8 +288,24 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (isArchived) item {
+                Text(
+                    "Arrangementet er arkivert og vises ikke i flokkens liste.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(14.dp),
+                )
+            }
             item { EventHeader(e, options.firstOrNull { it.id == e.chosenOptionId }) }
-            item { Text("Tidspunkter", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
+            item {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Tidspunkter", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    if (canSuggest) OutlinedButton(onClick = { suggesting = true }) {
+                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Foreslå")
+                    }
+                }
+            }
             if (me != null && options.isNotEmpty()) {
                 item {
                     val answered = options.count { o -> o.eventVotes.any { it.userId == me } }
@@ -162,12 +322,28 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
                     option = o,
                     myAnswer = o.eventVotes.firstOrNull { it.userId == me }?.answer?.let(VoteAnswer::of),
                     isChosen = o.id == e.chosenOptionId,
-                    locked = locked,
+                    locked = locked || isArchived,
                     names = names,
                     onVote = { vote(o.id, it) },
+                    actions = if (isArchived) null else fun(): List<Pair<String, () -> Unit>> {
+                        val list = mutableListOf<Pair<String, () -> Unit>>()
+                        if (canManage) {
+                            if (o.id == e.chosenOptionId) list += "Angre valget" to {
+                                update(buildJsonObject { put("chosen_option_id", JsonNull); put("status", "planning") })
+                            } else if (e.chosenOptionId == null) list += "Velg dette tidspunktet" to { confirmChoose = o }
+                        }
+                        if ((canManage || o.createdBy == me) && o.id != e.chosenOptionId) list += "Fjern tidspunktet" to {
+                            scope.launch {
+                                runCatching { supabase.from("event_time_options").delete { filter { eq("id", o.id) } } }
+                                load()
+                            }
+                        }
+                        return list
+                    },
                 )
             }
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            item { TaskList(eventId, tasks, members, me) { scope.launch { loadTasks() } } }
             item {
                 Card(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable { onChat(e.groupId, e.id) }) {
                     Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -242,8 +418,10 @@ private fun OptionCard(
     locked: Boolean,
     names: Map<String, String>,
     onVote: (VoteAnswer) -> Unit,
+    actions: (() -> List<Pair<String, () -> Unit>>)? = null,
 ) {
     val p = Fmt.parts(option.startsAt)
+    var actionsOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     var showVoters by remember { mutableStateOf(false) }
     fun count(a: VoteAnswer) = option.eventVotes.count { it.answer == a.value }
@@ -270,6 +448,18 @@ private fun OptionCard(
                                 "Valgt", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.clip(CircleShape).background(Green).padding(horizontal = 8.dp, vertical = 2.dp),
                             )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        val list = actions?.invoke().orEmpty()
+                        if (list.isNotEmpty()) Box {
+                            IconButton(onClick = { actionsOpen = true }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.MoreHoriz, contentDescription = "Valg for tidspunktet")
+                            }
+                            DropdownMenu(actionsOpen, { actionsOpen = false }) {
+                                list.forEach { (label, act) ->
+                                    DropdownMenuItem(text = { Text(label) }, onClick = { actionsOpen = false; act() })
+                                }
+                            }
                         }
                     }
                     ResultBar(count(VoteAnswer.YES), count(VoteAnswer.MAYBE), count(VoteAnswer.NO))
@@ -342,4 +532,15 @@ private fun ResultBar(yes: Int, maybe: Int, no: Int) {
         val rest = 1f - (yes + maybe + no) / total
         if (rest > 0f) Spacer(Modifier.weight(rest))
     }
+}
+
+
+/** Lytter på to strømmer samtidig: endringer som krever full lasting, og oppgaver. */
+private suspend fun Flow<PostgresAction>.collectLatestWith(
+    tasks: Flow<PostgresAction>,
+    onMain: suspend () -> Unit,
+    onTasks: suspend () -> Unit,
+) = coroutineScope {
+    launch { tasks.collect { onTasks() } }
+    collect { onMain() }
 }

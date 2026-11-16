@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -46,7 +49,8 @@ import kotlinx.coroutines.launch
 const val GROUP_COLUMNS = "id, slug, name, description, visibility, tint, backdrop, emoji"
 
 @Composable
-fun GroupsScreen(onOpen: (FlokkGroup) -> Unit) {
+fun GroupsScreen(onOpen: (FlokkGroup) -> Unit, onCreate: () -> Unit) {
+    val version by AppRouter.groupsVersion.collectAsState()
     var groups by remember { mutableStateOf<List<FlokkGroup>?>(null) }
     var refreshing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -67,7 +71,7 @@ fun GroupsScreen(onOpen: (FlokkGroup) -> Unit) {
             if (groups == null) groups = emptyList()
         }
     }
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(version) { load() }
 
     PullToRefreshBox(
         isRefreshing = refreshing,
@@ -76,8 +80,12 @@ fun GroupsScreen(onOpen: (FlokkGroup) -> Unit) {
     ) {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Text("Mine flokker", fontSize = 34.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 24.dp, bottom = 8.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Mine flokker", fontSize = 34.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    FilledTonalIconButton(onClick = onCreate) { Icon(Icons.Default.Add, contentDescription = "Ny flokk") }
+                }
             }
+            if (!groups.isNullOrEmpty()) item { PushPrompt() }
             val list = groups
             if (list == null) {
                 item { Box(Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
