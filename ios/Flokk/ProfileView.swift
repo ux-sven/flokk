@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(AuthModel.self) private var auth
+    @Environment(PushManager.self) private var push
     @State private var name = ""
     @State private var saved = false
     @State private var error: String?
@@ -30,6 +31,22 @@ struct ProfileView: View {
                     if let error { Text(error).foregroundStyle(.red) }
                     else if saved { Label("Lagret", systemImage: "checkmark").foregroundStyle(.green) }
                     else { Text("Dette er navnet de andre i flokkene dine ser.") }
+                }
+                Section {
+                    switch push.status {
+                    case .authorized, .provisional, .ephemeral:
+                        if push.registered {
+                            Label("Varsler er på for denne telefonen", systemImage: "bell.badge.fill")
+                        } else {
+                            Label("Varsler er tillatt, men telefonen er ikke registrert ennå", systemImage: "bell.slash")
+                        }
+                    default:
+                        PushPrompt()
+                    }
+                } header: {
+                    Text("Varsler")
+                } footer: {
+                    if let e = push.lastError { Text(e) }
                 }
                 Section {
                     Button("Logg ut", role: .destructive) { Task { await auth.signOut() } }

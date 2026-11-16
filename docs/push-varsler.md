@@ -1,6 +1,7 @@
 # Push-varsler på mobil og datamaskin
 
-Flokk sender varsler som vanlige systemvarsler (Web Push), også når appen er lukket.
+Flokk sender varsler som vanlige systemvarsler, også når appen er lukket:
+Web Push til nettlesere og APNs til iOS-appen (se [iOS-appen (APNs)](#ios-appen-apns) nederst).
 
 ```
 Noe skjer (melding, stemme, nytt arrangement …)
@@ -89,3 +90,45 @@ For ekte varsler trenger du en bruker til: du får ikke varsel om dine egne hand
 - **«Kunne ikke slå på varsler»:** sjekk at `NEXT_PUBLIC_VAPID_PUBLIC_KEY` er satt og at dev-serveren er startet på nytt.
 - **Varsler er blokkert:** brukeren må tillate varsler for nettstedet i nettleser- eller telefoninnstillingene.
 - **iPhone viser ikke knappen:** Flokk er åpnet i Safari, ikke fra Hjem-skjermen.
+
+
+## iOS-appen (APNs)
+
+Samme kjede som over – `send-push` sender i tillegg til alle iPhoner mottakeren har logget inn på i appen
+(tabellen `device_tokens`). Et trykk på varselet åpner riktig flokk, arrangement eller chat i appen.
+
+### 1. Migrasjon
+
+Kjør `supabase/migrations/20261116100000_device_tokens.sql` i SQL Editor.
+
+### 2. Nøkkel fra Apple (krever Apple Developer Program)
+
+1. [developer.apple.com](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** → **Keys** → **+**
+2. Gi nøkkelen et navn (f.eks. «Flokk push»), kryss av for **Apple Push Notifications service (APNs)** → Continue → Register
+3. Last ned `.p8`-filen (kan bare lastes ned én gang!) og noter **Key ID**
+4. **Team ID** står øverst til høyre under **Membership details**
+5. Under **Identifiers** må App ID-en `no.innafor.flokk` ha **Push Notifications** slått på
+   (Xcode gjør dette automatisk når du velger Team under Signing & Capabilities)
+
+### 3. Hemmeligheter for send-push
+
+Edge Functions → **Secrets** → legg til:
+
+| Navn | Verdi |
+|---|---|
+| `APNS_KEY_ID` | Key ID fra steg 2 |
+| `APNS_TEAM_ID` | Team ID fra steg 2 |
+| `APNS_BUNDLE_ID` | `no.innafor.flokk` |
+| `APNS_PRIVATE_KEY` | Hele innholdet i `.p8`-filen, inkludert `-----BEGIN PRIVATE KEY-----`-linjene |
+
+Deploy deretter `send-push` på nytt med innholdet i `supabase/functions/send-push/index.ts`.
+
+### 4. Test
+
+1. Åpne `ios/Flokk.xcodeproj`, velg ditt Team under **Signing & Capabilities** og kjør appen på en iPhone
+   (push virker også i simulatoren på Mac med Apple Silicon)
+2. Logg inn og trykk **Slå på varsler**. Under **Profil → Varsler** skal det stå «Varsler er på for denne telefonen»
+3. Få noen til å skrive i en chat du er med i – varselet kommer på telefonen
+
+Utviklingsbygg fra Xcode bruker Apples sandkasse og App Store/TestFlight-bygg produksjon; appen
+oppgir selv hvilket miljø tokenet hører til, så samme nøkkel fungerer for begge.

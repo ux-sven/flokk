@@ -1,3 +1,4 @@
+import Supabase
 import SwiftUI
 
 struct GroupView: View {
@@ -7,6 +8,20 @@ struct GroupView: View {
     @State private var events: [EventSummary] = []
     @State private var members: [Member] = []
     @State private var presence = PresenceModel()
+    @State private var creatingEvent = false
+    @State private var inviting = false
+    @State private var editingLook = false
+    @State private var confirmLeave = false
+    @State private var memberToRemove: Member?
+    @State private var notifyLevel = "all"
+    @State private var look: (tint: String?, backdrop: String?)?
+    @State private var error: String?
+    @Environment(Router.self) private var router
+
+    private var myRole: String? { members.first { $0.userId == auth.userId }?.role }
+    private var isAdmin: Bool { myRole == "owner" || myRole == "admin" }
+    private var tint: String? { look?.tint ?? group.tint }
+    private var backdrop: String? { look.map { $0.backdrop } ?? group.backdrop }
 
     private var othersOnline: [Member] {
         members.filter { $0.userId != auth.userId && presence.online.contains($0.userId) }
@@ -19,7 +34,13 @@ struct GroupView: View {
                 if !othersOnline.isEmpty { OnlineNowRow(people: othersOnline) }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Arrangementer").font(.title2.bold())
+                    HStack {
+                        Text("Arrangementer").font(.title2.bold())
+                        Spacer()
+                        Button { creatingEvent = true } label: { Label("Nytt", systemImage: "calendar.badge.plus") }
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
+                    }
                     if events.isEmpty {
                         Text("Ingen arrangementer ennå.")
                             .foregroundStyle(.secondary)
@@ -28,13 +49,11 @@ struct GroupView: View {
                             .card()
                     }
                     ForEach(events) { e in
-                        NavigationLink(value: e) { EventCard(event: e) }.buttonStyle(.plain)
+                        NavigationLink(value: Route.event(e.id)) { EventCard(event: e) }.buttonStyle(.plain)
                     }
                 }
 
-                NavigationLink {
-                    ChatView(groupId: group.id, eventId: nil, title: "Gruppechat", names: names)
-                } label: {
+                NavigationLink(value: Route.chat(groupId: group.id, eventId: nil)) {
                     Label("Gruppechat", systemImage: "bubble.left.and.bubble.right")
                         .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -56,7 +75,23 @@ struct GroupView: View {
                                     .background(.quaternary, in: .capsule)
                             }
                         }
+                        .contextMenu {
+                            if canRemove(m) {
+                                Button(role: .destructive) { memberToRemove = m } label: {
+                                    Label("Fjern fra flokken", systemImage: "person.badge.minus")
+                                }
+                            }
+                        }
                     }
+                    if isAdmin {
+                        Button { inviting = true } label: {
+                            Label("Inviter folk", systemImage: "person.badge.plus").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
+                        .padding(.top, 4)
+                    }
+                    if let error { Text(error).font(.callout).foregroundStyle(.red) }
                 }
                 .padding(20)
                 .card()
@@ -66,9 +101,28 @@ struct GroupView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ShareLink(item: siteURL("/\(group.slug)")) { Image(systemName: "link") }
-                .accessibilityLabel("Del lenke til flokken")
+        .toolbar { groupMenu }
+        .sheet(isPresented: $inviting) { InviteSheet(group: group).presentationDetents([.medium]) }
+        .sheet(isPresented: $editingLook) { lookSheet }
+        .confirmationDialog("Melde deg ut av \(group.name)?", isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button("Meld meg ut", role: .destructive) { Task { await leave() } }
+        } message: {
+            Text("Du mister tilgang til arrangementer og chat, og oppgavene dine blir ledige igjen.")
+        }
+        .confirmationDialog(
+            "Fjerne \(memberToRemove?.name ?? "")?",
+            isPresented: Binding(get: { memberToRemove != nil }, set: { if !$0 { memberToRemove = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Fjern fra flokken", role: .destructive) { if let m = memberToRemove { Task { await remove(m) } } }
+        } message: {
+            Text("Personen mister tilgang til arrangementer og chat, og oppgavene blir ledige igjen.")
+        }
+        .sheet(isPresented: $creatingEvent) {
+            CreateEventView(group: group) { id in
+                Task { await load() }
+                router.path.append(.event(id))
+            }
         }
         .refreshable { await load() }
         .task { await load() }
@@ -78,8 +132,6 @@ struct GroupView: View {
         }
         .onDisappear { Task { await presence.stop() } }
     }
-
-    private var names: [UUID: String] { Dictionary(uniqueKeysWithValues: members.map { ($0.userId, $0.name) }) }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -96,9 +148,107 @@ struct GroupView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { Surface(backdrop: group.backdrop, tint: group.tint) }
+        .background { Surface(backdrop: backdrop, tint: tint) }
         .clipShape(.rect(cornerRadius: 24))
         .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+    }
+
+    private var groupMenu: some View {
+        Menu {
+            ShareLink(item: siteURL("/\(group.slug)")) { Label("Del lenke til flokken", systemImage: "link") }
+            if isAdmin {
+                Button { inviting = true } label: { Label("Inviter folk", systemImage: "person.badge.plus") }
+                Button { editingLook = true } label: { Label("Utseende", systemImage: "paintpalette") }
+            }
+            Picker(selection: Binding(get: { notifyLevel }, set: { v in Task { await setNotify(v) } })) {
+                Text("Alt").tag("all")
+                Text("Det viktigste").tag("important")
+                Text("Ingenting").tag("none")
+            } label: {
+                Label("Varsler fra flokken", systemImage: "bell")
+            }
+            .pickerStyle(.menu)
+            if myRole != "owner" && myRole != nil {
+                Divider()
+                Button(role: .destructive) { confirmLeave = true } label: {
+                    Label("Meld meg ut av flokken", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .accessibilityLabel("Valg for flokken")
+    }
+
+    private var lookSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    TintPicker(selection: Binding(get: { tint ?? "mint" }, set: { v in Task { await setLook(tint: v, backdrop: backdrop) } }))
+                    BackdropPicker(
+                        selection: Binding(get: { backdrop.flatMap { knownBackdrops.contains($0) ? $0 : nil } },
+                                           set: { v in Task { await setLook(tint: tint ?? "mint", backdrop: v) } }),
+                        tint: tint
+                    )
+                }
+                .padding()
+            }
+            .navigationTitle("Utseende")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { Button("Ferdig") { editingLook = false } }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func canRemove(_ m: Member) -> Bool {
+        guard m.userId != auth.userId else { return false }
+        return myRole == "owner" || (myRole == "admin" && m.role == "member")
+    }
+
+    private func setNotify(_ level: String) async {
+        let before = notifyLevel
+        notifyLevel = level
+        do {
+            try await supabase.rpc("set_notify_level", params: ["gid": group.id.uuidString.lowercased(), "level": level]).execute()
+        } catch {
+            notifyLevel = before
+            self.error = "Kunne ikke endre varslingsnivået."
+        }
+    }
+
+    private func setLook(tint: String, backdrop: String?) async {
+        let before = look
+        look = (tint, backdrop)
+        do {
+            let rows: [FlokkGroup] = try await supabase.from("groups")
+                .update(["tint": AnyJSON.string(tint), "backdrop": backdrop.map(AnyJSON.string) ?? .null])
+                .eq("id", value: group.id)
+                .select("id, slug, name, description, visibility, tint, backdrop, emoji").decoded()
+            if rows.isEmpty { look = before; error = "Bare admins kan endre utseendet." }
+            router.groupsVersion += 1
+        } catch {
+            look = before
+            self.error = "Kunne ikke lagre utseendet."
+        }
+    }
+
+    private func leave() async {
+        guard let uid = auth.userId else { return }
+        do {
+            try await supabase.from("group_members").delete().eq("group_id", value: group.id).eq("user_id", value: uid).execute()
+            router.groupsVersion += 1
+            router.path = []
+        } catch {
+            self.error = "Kunne ikke melde deg ut."
+        }
+    }
+
+    private func remove(_ m: Member) async {
+        struct Row: Decodable { let userId: UUID }
+        let rows: [Row]? = try? await supabase.from("group_members").delete()
+            .eq("group_id", value: group.id).eq("user_id", value: m.userId).select("user_id").decoded()
+        if rows?.isEmpty ?? true { error = "Du har ikke lov til å fjerne dette medlemmet." }
+        await load()
     }
 
     private func roleLabel(_ r: String) -> String? {
@@ -122,6 +272,11 @@ struct GroupView: View {
             .decoded()
         if let e = try? await ev { events = e }
         if let m = try? await mem { members = m }
+        struct Level: Decodable { let notifyLevel: String }
+        if let uid = auth.userId, let l: Level = try? await supabase.from("group_members").select("notify_level")
+            .eq("group_id", value: group.id).eq("user_id", value: uid).single().decoded() {
+            notifyLevel = l.notifyLevel
+        }
     }
 }
 
@@ -131,7 +286,7 @@ struct EventCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let b = event.backdrop, knownBackdrops.contains(b) {
-                Surface(backdrop: b, tint: nil).frame(height: 64).clipped()
+                Color.clear.frame(height: 64).overlay { Surface(backdrop: b, tint: nil) }.clipped()
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(event.chosen.map { Fmt.dateTime($0.startsAt) } ?? "Stemming pågår")

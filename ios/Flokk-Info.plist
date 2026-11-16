@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- flokk://invitasjon/<token> og flokk://<slug>/arrangement/<id> åpner appen direkte -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>no.innafor.flokk</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>flokk</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -10,21 +10,29 @@ Native SwiftUI-app som bruker samme Supabase-prosjekt (database, innlogging, RLS
    sh ios/scripts/make-secrets.sh
    ```
 
-2. Åpne `ios/Flokk.xcodeproj` i Xcode, velg en iPhone-simulator og trykk ▶︎.
+2. Åpne `ios/Flokk.xcodeproj` i Xcode, velg ditt Team under **Signing & Capabilities**,
+   velg en iPhone (eller simulator) og trykk ▶︎.
 
 Supabase-pakken (`supabase-swift`) hentes automatisk via Swift Package Manager.
+Push-varsler krever migrasjon 11 og en APNs-nøkkel – se [docs/push-varsler.md](../docs/push-varsler.md#ios-appen-apns).
 
 ## Innhold
 
-- Innlogging med e-post og passord (registrering og glemt passord åpnes på nett)
-- Mine flokker, flokkside med arrangementer, medlemmer og «inne nå» (samme presence-kanal som web)
-- Arrangement med stemmegivning (Passer / Kanskje / Passer ikke), sanntidsoppdatering og kart-lenke
-- Gruppechat og arrangementschat med sanntid
-- Profil: endre visningsnavn og logge ut
+- **Innlogging** med e-post og passord (registrering og glemt passord åpnes på nett)
+- **Push-varsler** (APNs) med myk forespørsel, ulest-merke på app-ikonet og trykk som åpner riktig skjerm
+- **Varsler-fane** med samme tekster som webappen, «Merk alle som lest» og sanntidsoppdatering
+- **Flokker**: lage ny flokk (navn, adresse, emoji, synlighet, farge og bakgrunn)
+- **Flokkside**: arrangementer, gruppechat, medlemmer med «inne nå», invitasjonslenke,
+  varslingsnivå, utseende (admin), fjerne medlemmer (admin) og melde seg ut
+- **Arrangement**: lage nytt med adressesøk (Kartverket), flere tidsforslag og bakgrunn;
+  stemme, se hvem som har svart, foreslå tidspunkt, velge/angre tidspunkt, oppgaver med ansvarlig,
+  arkivere og slette (arrangør/admin)
+- **Chat** for flokk og arrangement i sanntid
+- **Lenker**: `flokk://invitasjon/<token>`, `flokk://<flokk>` og `flokk://<flokk>/arrangement/<id>` åpner appen
 
 ## Ikke laget ennå
 
-- Opprette flokk og arrangement, foreslå tidspunkt, velge tidspunkt (admin)
-- Oppgaver, invitasjoner og utmelding
-- Push-varsler (APNs) og dyplenker (Universal Links) for invitasjoner
-- App-ikon
+- Universal Links (at vanlige https-lenker åpner appen) – krever Team ID og en
+  `apple-app-site-association`-fil på nettsiden
+- App-ikon og App Store-oppføring
+- Profilbilde

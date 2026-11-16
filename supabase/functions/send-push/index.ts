@@ -1,4 +1,5 @@
-// Supabase Edge Function: sender Web Push når et varsel lages eller samles opp.
+// Supabase Edge Function: sender push når et varsel lages eller samles opp –
+// Web Push til nettlesere og APNs til iOS-appen.
 //
 // Kalles på to måter:
 //  1. Database Webhook på public.notifications (INSERT og UPDATE), med
@@ -8,6 +9,8 @@
 // Hemmeligheter (Edge Functions → Secrets):
 //   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, PUSH_WEBHOOK_SECRET,
 //   SITE_URL (kommaseparert liste over adresser appen kjører på)
+//   iOS-appen (valgfritt): APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID og
+//   APNS_PRIVATE_KEY (innholdet i .p8-filen fra Apple Developer)
 // SUPABASE_URL og SUPABASE_SERVICE_ROLE_KEY finnes automatisk.
 //
 // Deploy med «Verify JWT» slått AV – funksjonen sjekker selv hemmelighet/innlogging.
@@ -20,6 +23,71 @@ const env = (k: string) => Deno.env.get(k) ?? "";
 const vapidReady = Boolean(env("VAPID_SUBJECT") && env("VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY"));
 if (vapidReady) webpush.setVapidDetails(env("VAPID_SUBJECT"), env("VAPID_PUBLIC_KEY"), env("VAPID_PRIVATE_KEY"));
 else console.error("[send-push] Mangler VAPID_SUBJECT, VAPID_PUBLIC_KEY eller VAPID_PRIVATE_KEY");
+
+// ---------------------------------------------------------------------------
+// APNs (Apple Push Notification service) for iOS-appen
+const apnsReady = Boolean(env("APNS_KEY_ID") && env("APNS_TEAM_ID") && env("APNS_BUNDLE_ID") && env("APNS_PRIVATE_KEY"));
+if (!apnsReady) console.warn("[send-push] APNs er ikke satt opp – iOS-appen får ikke push");
+
+const b64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const encodeJson = (o: unknown) => b64url(new TextEncoder().encode(JSON.stringify(o)));
+
+let apnsKey: CryptoKey | null = null;
+let apnsJwt: { token: string; issuedAt: number } | null = null;
+
+/** Apple krever en ES256-signert JWT som fornyes mellom 20 og 60 minutter. */
+async function apnsAuthToken(): Promise<string> {
+  if (apnsJwt && Date.now() - apnsJwt.issuedAt < 40 * 60 * 1000) return apnsJwt.token;
+  if (!apnsKey) {
+    const pem = env("APNS_PRIVATE_KEY").replace(/\\n/g, "\n");
+    const der = Uint8Array.from(atob(pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
+    apnsKey = await crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  }
+  const unsigned = `${encodeJson({ alg: "ES256", kid: env("APNS_KEY_ID") })}.${encodeJson({
+    iss: env("APNS_TEAM_ID"),
+    iat: Math.floor(Date.now() / 1000),
+  })}`;
+  // WebCrypto gir signaturen som r||s (64 byte), som er formatet JWT bruker
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, apnsKey, new TextEncoder().encode(unsigned));
+  apnsJwt = { token: `${unsigned}.${b64url(new Uint8Array(sig))}`, issuedAt: Date.now() };
+  return apnsJwt.token;
+}
+
+/** Returnerer «gone» når Apple sier tokenet ikke lenger er gyldig. */
+async function sendApns(token: string, environment: string, payload: PushPayload): Promise<"ok" | "gone" | "error"> {
+  const host = environment === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+  const res = await fetch(`https://${host}/3/device/${token}`, {
+    method: "POST",
+    headers: {
+      authorization: `bearer ${await apnsAuthToken()}`,
+      "apns-topic": env("APNS_BUNDLE_ID"),
+      "apns-push-type": "alert",
+      "apns-priority": "10",
+      "apns-expiration": String(Math.floor(Date.now() / 1000) + 60 * 60 * 24),
+      ...(payload.tag ? { "apns-collapse-id": payload.tag.slice(0, 64) } : {}),
+    },
+    body: JSON.stringify({
+      aps: {
+        alert: { title: payload.title, body: payload.body },
+        sound: "default",
+        ...(payload.unread !== undefined ? { badge: payload.unread } : {}),
+        ...(payload.groupId ? { "thread-id": payload.groupId } : {}),
+      },
+      url: payload.url,
+      group_id: payload.groupId,
+      event_id: payload.eventId,
+      kind: payload.kind,
+    }),
+  });
+  if (res.ok) return "ok";
+  const reason = ((await res.json().catch(() => ({}))) as { reason?: string }).reason;
+  if (res.status === 410 || reason === "BadDeviceToken" || reason === "Unregistered" || reason === "DeviceTokenNotForTopic") {
+    return "gone";
+  }
+  console.error("[send-push] APNs", res.status, reason);
+  return "error";
+}
 
 const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
   auth: { persistSession: false },
@@ -56,7 +124,18 @@ type NotificationRow = {
   updated_at: string;
 };
 
-type PushPayload = { title: string; body: string; url: string; tag?: string; unread?: number; timestamp?: number };
+type PushPayload = {
+  title: string;
+  body: string;
+  url: string;
+  tag?: string;
+  unread?: number;
+  timestamp?: number;
+  // Brukes av native apper for å åpne riktig skjerm
+  groupId?: string;
+  eventId?: string | null;
+  kind?: string;
+};
 
 const when = (iso?: string) =>
   iso
@@ -98,13 +177,32 @@ function describe(n: NotificationRow, who: string): string {
 }
 
 async function sendToUser(userId: string, payload: PushPayload) {
-  const { data: subs } = await admin
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("user_id", userId);
+  const [{ data: subs }, { data: devices }] = await Promise.all([
+    vapidReady
+      ? admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").eq("user_id", userId)
+      : Promise.resolve({ data: [] }),
+    apnsReady
+      ? admin.from("device_tokens").select("id, token, platform, environment").eq("user_id", userId).eq("platform", "ios")
+      : Promise.resolve({ data: [] }),
+  ]);
 
   let sent = 0;
-  await Promise.all(
+  const native = Promise.all(
+    (devices ?? []).map(async (d) => {
+      try {
+        const result = await sendApns(d.token, d.environment, payload);
+        if (result === "ok") {
+          sent++;
+          await admin.from("device_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", d.id);
+        } else if (result === "gone") {
+          await admin.from("device_tokens").delete().eq("id", d.id);
+        }
+      } catch (err) {
+        console.error("[send-push] APNs", (err as Error).message);
+      }
+    }),
+  );
+  const web = Promise.all(
     (subs ?? []).map(async (s) => {
       try {
         await webpush.sendNotification(
@@ -125,7 +223,8 @@ async function sendToUser(userId: string, payload: PushPayload) {
       }
     }),
   );
-  return { sent, devices: subs?.length ?? 0 };
+  await Promise.all([native, web]);
+  return { sent, devices: (subs?.length ?? 0) + (devices?.length ?? 0) };
 }
 
 async function handleNotification(n: NotificationRow) {
@@ -151,6 +250,9 @@ async function handleNotification(n: NotificationRow) {
     tag: n.collapse_key ?? n.id,
     unread: unread ?? undefined,
     timestamp: Date.parse(n.updated_at) || Date.now(),
+    groupId: n.group_id,
+    eventId: n.event_id,
+    kind: n.kind,
   });
 }
 
@@ -160,7 +262,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   const body = await req.json().catch(() => ({}));
-  if (!vapidReady && (body.test || body.record)) return json({ error: "vapid-not-configured" }, 500);
+  if (!vapidReady && !apnsReady && (body.test || body.record)) return json({ error: "push-not-configured" }, 500);
 
   // 1) Database Webhook
   const secret = env("PUSH_WEBHOOK_SECRET");

@@ -1,6 +1,6 @@
 import Foundation
 
-struct FlokkGroup: Decodable, Identifiable, Hashable {
+nonisolated struct FlokkGroup: Decodable, Identifiable, Hashable {
     let id: UUID
     let slug: String
     let name: String
@@ -11,18 +11,18 @@ struct FlokkGroup: Decodable, Identifiable, Hashable {
     let emoji: String?
 }
 
-struct Membership: Decodable {
+nonisolated struct Membership: Decodable {
     let role: String
     let groups: FlokkGroup?
 }
 
-struct Profile: Decodable, Hashable {
+nonisolated struct Profile: Decodable, Hashable {
     let id: UUID
     let displayName: String
     let avatarUrl: String?
 }
 
-struct Member: Decodable, Identifiable, Hashable {
+nonisolated struct Member: Decodable, Identifiable, Hashable {
     let userId: UUID
     let role: String
     let profiles: Profile?
@@ -30,7 +30,7 @@ struct Member: Decodable, Identifiable, Hashable {
     var name: String { (profiles?.displayName).flatMap { $0.isEmpty ? nil : $0 } ?? "Medlem" }
 }
 
-struct EventSummary: Decodable, Identifiable, Hashable {
+nonisolated struct EventSummary: Decodable, Identifiable, Hashable {
     struct Chosen: Decodable, Hashable { let startsAt: String }
     let id: UUID
     let title: String
@@ -40,7 +40,7 @@ struct EventSummary: Decodable, Identifiable, Hashable {
     let chosen: Chosen?
 }
 
-struct EventDetail: Decodable, Identifiable {
+nonisolated struct EventDetail: Decodable, Identifiable {
     let id: UUID
     let title: String
     let description: String
@@ -51,9 +51,20 @@ struct EventDetail: Decodable, Identifiable {
     let status: String
     let chosenOptionId: UUID?
     let createdBy: UUID
+    let allowTimeSuggestions: Bool?
+    let archivedAt: String?
 }
 
-enum VoteAnswer: String, Codable, CaseIterable {
+nonisolated struct EventTask: Decodable, Identifiable, Equatable {
+    let id: UUID
+    let title: String
+    let assigneeId: UUID?
+    let status: String
+    let createdBy: UUID?
+    var isDone: Bool { status == "done" }
+}
+
+nonisolated enum VoteAnswer: String, Codable, CaseIterable {
     case yes, maybe, no
 
     var label: String {
@@ -73,20 +84,20 @@ enum VoteAnswer: String, Codable, CaseIterable {
     }
 }
 
-struct Vote: Codable, Hashable {
+nonisolated struct Vote: Codable, Hashable {
     let optionId: UUID
     let userId: UUID
     let answer: VoteAnswer
 }
 
-struct TimeOption: Decodable, Identifiable {
+nonisolated struct TimeOption: Decodable, Identifiable {
     let id: UUID
     let startsAt: String
     let createdBy: UUID?
     var eventVotes: [Vote]
 }
 
-struct Message: Decodable, Identifiable, Equatable {
+nonisolated struct Message: Decodable, Identifiable, Equatable {
     let id: UUID
     let groupId: UUID
     let eventId: UUID?

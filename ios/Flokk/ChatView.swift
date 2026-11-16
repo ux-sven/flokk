@@ -4,9 +4,9 @@ import Supabase
 struct ChatView: View {
     let groupId: UUID
     let eventId: UUID?
-    let title: String
-    let names: [UUID: String]
     @Environment(AuthModel.self) private var auth
+    @Environment(Router.self) private var router
+    @State private var names: [UUID: String] = [:]
     @State private var messages: [Message] = []
     @State private var text = ""
     @State private var sending = false
@@ -30,11 +30,15 @@ struct ChatView: View {
         }
         .safeAreaInset(edge: .bottom) { inputBar }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(title)
+        .navigationTitle(eventId == nil ? "Gruppechat" : "Chat for arrangementet")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarVisibility(.hidden, for: .tabBar)
         .task { await load(); await listen() }
-        .onDisappear { if let channel { Task { await supabase.removeChannel(channel) } } }
+        .onAppear { router.visibleChat = (groupId, eventId) }
+        .onDisappear {
+            router.visibleChat = nil
+            if let channel { Task { await supabase.removeChannel(channel) } }
+        }
     }
 
     private func bubble(_ m: Message) -> some View {
@@ -71,6 +75,11 @@ struct ChatView: View {
     }
 
     private func load() async {
+        if names.isEmpty, let members: [Member] = try? await supabase.from("group_members")
+            .select("user_id, role, profiles(id, display_name, avatar_url)")
+            .eq("group_id", value: groupId).decoded() {
+            names = Dictionary(uniqueKeysWithValues: members.map { ($0.userId, $0.name) })
+        }
         var q = supabase.from("messages")
             .select("id, group_id, event_id, author_id, body, created_at")
             .eq("group_id", value: groupId)

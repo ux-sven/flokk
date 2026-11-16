@@ -25,6 +25,7 @@ Rekkefølgen er viktig. Velg én av måtene:
 8. `supabase/migrations/20261110150000_group_backdrop.sql`
 9. `supabase/migrations/20261110160000_event_location.sql`
 10. `supabase/migrations/20261110180000_event_backdrop.sql`
+11. `supabase/migrations/20261116100000_device_tokens.sql` (push til iOS-appen)
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 

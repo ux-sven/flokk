@@ -93,6 +93,12 @@ if (evbg.body?.code === "42703" || evbg.body?.code === "PGRST204")
   bad("Mangler bakgrunn for arrangementer", "Kjør 20261110180000_event_backdrop.sql");
 else ok("Bakgrunn for arrangementer er satt opp (migrasjon 10)");
 
+// Utlogget får tom liste eller «permission denied» når tabellen finnes, PGRST205 når den mangler
+const dev = await call("/rest/v1/device_tokens?select=id&limit=1");
+if (dev.body?.code === "PGRST205" || dev.body?.code === "42P01")
+  bad("Mangler push til iOS-appen", "Kjør 20261116100000_device_tokens.sql");
+else ok("Push til mobilappene er satt opp (migrasjon 11)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

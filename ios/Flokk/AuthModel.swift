@@ -31,6 +31,8 @@ final class AuthModel {
     }
 
     func signOut() async {
+        await PushManager.shared.unregister()
+        await NotificationCenterModel.shared.stop()
         try? await supabase.auth.signOut()
     }
 }
