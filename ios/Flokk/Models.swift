@@ -37,7 +37,30 @@ nonisolated struct EventSummary: Decodable, Identifiable, Hashable {
     let status: String
     let location: String?
     let backdrop: String?
+    let createdAt: String?
     let chosen: Chosen?
+
+    var startsAt: Date? { chosen.flatMap { Fmt.date($0.startsAt) } }
+}
+
+/// Arrangementer delt i «Kommende» (snarest først), «Stemming pågår» (nyeste først)
+/// og «Tidligere» (sist passerte først). Uten sluttid regnes et arrangement som
+/// kommende til seks timer etter start – samme regel som webappen.
+nonisolated struct EventSections {
+    static let pastAfter: TimeInterval = 6 * 60 * 60
+    var upcoming: [EventSummary] = []
+    var voting: [EventSummary] = []
+    var past: [EventSummary] = []
+
+    init(_ events: [EventSummary], now: Date = .now) {
+        for e in events {
+            guard let at = e.startsAt else { voting.append(e); continue }
+            if at.addingTimeInterval(Self.pastAfter) < now { past.append(e) } else { upcoming.append(e) }
+        }
+        upcoming.sort { $0.startsAt! < $1.startsAt! }
+        past.sort { $0.startsAt! > $1.startsAt! }
+        voting.sort { ($0.createdAt ?? "") > ($1.createdAt ?? "") }
+    }
 }
 
 nonisolated struct EventDetail: Decodable, Identifiable {

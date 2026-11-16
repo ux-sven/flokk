@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Loading from "@/app/loading";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Archive, CalendarPlus, ChevronDown, Globe, Lock } from "lucide-react";
+import { Archive, CalendarPlus, ChevronDown, Globe, History, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Chat } from "@/components/chat";
@@ -15,6 +15,7 @@ import { NotifyLevelPicker } from "@/components/notify-level-picker";
 import { LeaveGroupButton } from "@/components/leave-group-button";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
+import { splitEvents } from "@/lib/events";
 import { formatDateTime } from "@/lib/format";
 import { asBackdrop, asTint, eventSurface, groupSurface } from "@/lib/tints";
 import type { NotifyLevel } from "@/lib/notifications";
@@ -124,7 +125,7 @@ async function MemberView({
     loadMembers(groupId),
     supabase
       .from("events")
-      .select("id, title, status, location, backdrop, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
+      .select("id, title, status, location, backdrop, created_at, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
       .eq("group_id", groupId)
       .neq("status", "cancelled")
       .is("archived_at", null)
@@ -151,14 +152,8 @@ async function MemberView({
       .limit(50),
   ]);
 
-  const eventList = (events ?? []) as unknown as {
-    id: string;
-    title: string;
-    location: string | null;
-    backdrop: string | null;
-    chosen: { starts_at: string } | null;
-    event_time_options: { count: number }[];
-  }[];
+  const eventList = (events ?? []) as unknown as GroupEvent[];
+  const { voting, upcoming, past } = splitEvents(eventList);
   const names = Object.fromEntries(members.map((m) => [m.user_id, m.profiles?.display_name || "Medlem"]));
 
   const people = members.map((m) => ({ id: m.user_id, name: names[m.user_id], avatar: m.profiles?.avatar_url }));
@@ -174,31 +169,39 @@ async function MemberView({
                 <CalendarPlus /> Nytt arrangement
               </Link>
             </div>
-            {!eventList.length ? (
+            {!upcoming.length && !voting.length ? (
               <div className="rounded-3xl bg-card p-6 text-muted-foreground shadow-card">
-                Ingen arrangementer ennå. Foreslå noen tidspunkter og la flokken stemme!
+                {past.length ? "Ingen kommende arrangementer." : "Ingen arrangementer ennå."} Foreslå noen
+                tidspunkter og la flokken stemme!
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {eventList.map((e) => (
-                  <Link
-                    key={e.id}
-                    href={`/${slug}/arrangement/${e.id}`}
-                    className="overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
-                  >
-                    {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
-                    <div className="space-y-1 p-5">
-                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        {e.chosen?.starts_at
-                          ? formatDateTime(e.chosen.starts_at)
-                          : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
-                      </p>
-                      <p className="font-semibold">{e.title}</p>
-                      {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              <>
+                {!!upcoming.length && <EventGroup title="Kommende" events={upcoming} slug={slug} />}
+                {!!voting.length && <EventGroup title="Stemming pågår" events={voting} slug={slug} />}
+              </>
+            )}
+            {!!past.length && (
+              <details className="group rounded-3xl bg-card/60 px-5 py-3 shadow-card">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <History className="size-4" /> Tidligere arrangementer · {past.length}
+                  <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" />
+                </summary>
+                <ul className="mt-3 space-y-1">
+                  {past.map((e) => (
+                    <li key={e.id}>
+                      <Link
+                        href={`/${slug}/arrangement/${e.id}`}
+                        className="flex justify-between gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-muted"
+                      >
+                        <span className="truncate">{e.title}</span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {formatDateTime(e.chosen!.starts_at)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
             {!!archived?.length && (
               <details className="group rounded-3xl bg-card/60 px-5 py-3 shadow-card">
@@ -267,5 +270,45 @@ async function MemberView({
         </aside>
       </div>
     </PresenceProvider>
+  );
+}
+
+type GroupEvent = {
+  id: string;
+  title: string;
+  created_at: string;
+  location: string | null;
+  backdrop: string | null;
+  chosen: { starts_at: string } | null;
+  event_time_options: { count: number }[];
+};
+
+function EventGroup({ title, events, slug }: { title: string; events: GroupEvent[]; slug: string }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+        {title} · {events.length}
+      </h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {events.map((e) => (
+          <Link
+            key={e.id}
+            href={`/${slug}/arrangement/${e.id}`}
+            className="overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
+          >
+            {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
+            <div className="space-y-1 p-5">
+              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                {e.chosen?.starts_at
+                  ? formatDateTime(e.chosen.starts_at)
+                  : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
+              </p>
+              <p className="font-semibold">{e.title}</p>
+              {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

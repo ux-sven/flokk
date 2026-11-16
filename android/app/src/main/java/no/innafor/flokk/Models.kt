@@ -41,10 +41,32 @@ data class EventSummary(
     val status: String,
     val location: String? = null,
     val backdrop: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
     val chosen: Chosen? = null,
 ) {
     @Serializable
     data class Chosen(@SerialName("starts_at") val startsAt: String)
+
+    val startsAt: java.time.Instant? get() = chosen?.let { Fmt.parse(it.startsAt)?.toInstant() }
+}
+
+/**
+ * Arrangementer delt i «Kommende» (snarest først), «Stemming pågår» (nyeste først)
+ * og «Tidligere» (sist passerte først). Uten sluttid regnes et arrangement som
+ * kommende til seks timer etter start – samme regel som webappen.
+ */
+class EventSections(events: List<EventSummary>, now: java.time.Instant = java.time.Instant.now()) {
+    val upcoming: List<EventSummary>
+    val voting: List<EventSummary>
+    val past: List<EventSummary>
+
+    init {
+        val cutoff = now.minus(java.time.Duration.ofHours(6))
+        val (timed, untimed) = events.partition { it.startsAt != null }
+        upcoming = timed.filter { !it.startsAt!!.isBefore(cutoff) }.sortedBy { it.startsAt }
+        past = timed.filter { it.startsAt!!.isBefore(cutoff) }.sortedByDescending { it.startsAt }
+        voting = untimed.sortedByDescending { it.createdAt ?: "" }
+    }
 }
 
 @Serializable

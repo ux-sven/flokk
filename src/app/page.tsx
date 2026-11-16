@@ -5,6 +5,7 @@ import { CalendarCheck, ListChecks, MessagesSquare, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { splitEvents } from "@/lib/events";
 import { formatDateTime } from "@/lib/format";
 import { eventSurface, groupSurface, tintBg } from "@/lib/tints";
 import type { Group } from "@/lib/types";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 type DashboardEvent = {
   id: string;
+  created_at: string;
   title: string;
   location: string | null;
   backdrop: string | null;
@@ -44,17 +46,17 @@ async function Dashboard({ userId }: { userId: string }) {
       .order("joined_at", { ascending: false }),
     supabase
       .from("events")
-      .select("id, title, status, location, backdrop, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
+      .select("id, title, status, location, backdrop, created_at, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
       .neq("status", "cancelled")
       .is("archived_at", null)
       .order("created_at", { ascending: false })
-      .limit(9),
+      .limit(200),
   ]);
 
   const groups = ((memberships ?? []) as unknown as { groups: Group | null }[]).flatMap((m) =>
     m.groups ? [m.groups] : [],
   );
-  const upcoming = (events ?? []) as unknown as DashboardEvent[];
+  const { voting, upcoming } = splitEvents((events ?? []) as unknown as DashboardEvent[]);
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 space-y-10 px-4 py-8">
@@ -93,32 +95,55 @@ async function Dashboard({ userId }: { userId: string }) {
       <section className="space-y-4">
         <h2 className="text-2xl font-bold tracking-tight">Kommende arrangementer</h2>
         {!upcoming.length ? (
-          <p className="text-muted-foreground">Ingen arrangementer ennå.</p>
+          <p className="text-muted-foreground">
+            {voting.length ? "Ingen arrangementer har fått tidspunkt ennå." : "Ingen kommende arrangementer."}
+          </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {upcoming.map((e) => (
-              <Link
-                key={e.id}
-                href={`/${e.groups?.slug}/arrangement/${e.id}`}
-                className="group overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
-              >
-                <div className={cn("h-24", eventSurface(e, e.groups))} />
-                <div className="space-y-1 p-5">
-                  <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    {e.chosen?.starts_at ? formatDateTime(e.chosen.starts_at) : "Stemming pågår"}
-                  </p>
-                  <p className="font-semibold">{e.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {e.groups?.name}
-                    {e.location ? ` · ${e.location}` : ""}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <EventGrid events={upcoming.slice(0, 9)} />
+        )}
+        {upcoming.length > 9 && (
+          <p className="text-sm text-muted-foreground">
+            Og {upcoming.length - 9} til – se flokkene for alle arrangementer.
+          </p>
         )}
       </section>
+
+      {!!voting.length && (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">Stemming pågår</h2>
+          <EventGrid events={voting.slice(0, 6)} />
+          {voting.length > 6 && (
+            <p className="text-sm text-muted-foreground">Og {voting.length - 6} til – se flokkene for alle.</p>
+          )}
+        </section>
+      )}
     </main>
+  );
+}
+
+function EventGrid({ events }: { events: DashboardEvent[] }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {events.map((e) => (
+        <Link
+          key={e.id}
+          href={`/${e.groups?.slug}/arrangement/${e.id}`}
+          className="group overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
+        >
+          <div className={cn("h-24", eventSurface(e, e.groups))} />
+          <div className="space-y-1 p-5">
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              {e.chosen?.starts_at ? formatDateTime(e.chosen.starts_at) : "Stemming pågår"}
+            </p>
+            <p className="font-semibold">{e.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {e.groups?.name}
+              {e.location ? ` · ${e.location}` : ""}
+            </p>
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 

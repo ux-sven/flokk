@@ -1,14 +1,20 @@
 const TZ = "Europe/Oslo";
 
-export function formatDateTime(iso: string) {
+const yearOf = new Intl.DateTimeFormat("nb-NO", { year: "numeric", timeZone: TZ });
+
+/** «fre. 21. nov., 18:00» – med årstall når datoen ikke er i år. */
+export function formatDateTime(iso: string, now = Date.now()) {
+  const date = new Date(iso);
+  const otherYear = yearOf.format(date) !== yearOf.format(now);
   return new Intl.DateTimeFormat("nb-NO", {
     weekday: "short",
     day: "numeric",
     month: "short",
+    ...(otherYear && { year: "numeric" }),
     hour: "2-digit",
     minute: "2-digit",
     timeZone: TZ,
-  }).format(new Date(iso));
+  }).format(date);
 }
 
 export function formatTime(iso: string) {

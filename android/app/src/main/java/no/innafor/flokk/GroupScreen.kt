@@ -4,6 +4,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PersonAdd
@@ -130,7 +134,7 @@ fun GroupScreen(
         }
         runCatching {
             events = supabase.from("events")
-                .select(Columns.raw("id, title, status, location, backdrop, chosen:event_time_options!events_chosen_option_fk(starts_at)")) {
+                .select(Columns.raw("id, title, status, location, backdrop, created_at, chosen:event_time_options!events_chosen_option_fk(starts_at)")) {
                     filter {
                         eq("group_id", groupId)
                         neq("status", "cancelled")
@@ -251,14 +255,27 @@ fun GroupScreen(
                     }
                 }
             }
-            if (events.isEmpty()) {
+            val sections = EventSections(events)
+            if (sections.upcoming.isEmpty() && sections.voting.isEmpty()) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
-                        Text("Ingen arrangementer ennå.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(20.dp))
+                        Text(
+                            if (sections.past.isEmpty()) "Ingen arrangementer ennå." else "Ingen kommende arrangementer.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(20.dp),
+                        )
                     }
                 }
             }
-            items(events, key = { it.id }) { e -> EventCard(e) { onEvent(e.id) } }
+            listOf("Kommende" to sections.upcoming, "Stemming pågår" to sections.voting).forEach { (title, list) ->
+                if (list.isNotEmpty()) {
+                    item(key = "section-$title") { SectionLabel("$title · ${list.size}") }
+                    items(list, key = { it.id }) { e -> EventCard(e) { onEvent(e.id) } }
+                }
+            }
+            if (sections.past.isNotEmpty()) {
+                item(key = "past") { PastEvents(sections.past, onEvent) }
+            }
             item {
                 Card(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable { onChat(g.id) }) {
                     Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -343,6 +360,62 @@ private fun GroupHeader(g: FlokkGroup) {
                 Text(if (g.visibility == "open") "Åpen" else "Kun inviterte", fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
             g.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)) }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.6.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+}
+
+@Composable
+private fun PastEvents(events: List<EventSummary>, onEvent: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth()) {
+        Column {
+            Row(
+                Modifier.fillMaxWidth().clickable { open = !open }.padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.History, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Tidligere arrangementer · ${events.size}",
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    if (open) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    if (open) "Skjul" else "Vis",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (open) {
+                events.forEach { e ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onEvent(e.id) }.padding(horizontal = 20.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(e.title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            e.chosen?.let { Fmt.dateTime(it.startsAt) } ?: "",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
         }
     }
 }

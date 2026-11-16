@@ -4,14 +4,15 @@ enum Fmt {
     private static let oslo = TimeZone(identifier: "Europe/Oslo")!
     private static let nb = Locale(identifier: "nb_NO")
 
-    private static let isoFrac: ISO8601DateFormatter = {
+    // ISO8601DateFormatter er trådsikker; brukes også fra modellene utenfor MainActor
+    nonisolated(unsafe) private static let isoFrac: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
-    private static let iso = ISO8601DateFormatter()
+    nonisolated(unsafe) private static let iso = ISO8601DateFormatter()
 
-    static func date(_ s: String) -> Date? { isoFrac.date(from: s) ?? iso.date(from: s) }
+    nonisolated static func date(_ s: String) -> Date? { isoFrac.date(from: s) ?? iso.date(from: s) }
 
     private static func formatter(_ template: String) -> DateFormatter {
         let f = DateFormatter()
@@ -21,15 +22,19 @@ enum Fmt {
         return f
     }
     private static let dateTimeF = formatter("EEEEdMMMMHHmm")
+    private static let dateTimeYearF = formatter("EEEEdMMMMyHHmm")
     private static let weekdayF = formatter("EEE")
     private static let monthF = formatter("MMM")
     private static let dayF = formatter("d")
     private static let timeF = formatter("HHmm")
 
-    /// «lørdag 14. november kl. 18:00»
+    /// «lørdag 14. november kl. 18:00» – med årstall når datoen ikke er i år.
     static func dateTime(_ s: String) -> String {
         guard let d = date(s) else { return s }
-        return dateTimeF.string(from: d)
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = oslo
+        let sameYear = cal.component(.year, from: d) == cal.component(.year, from: .now)
+        return (sameYear ? dateTimeF : dateTimeYearF).string(from: d)
     }
     static func parts(_ s: String) -> (weekday: String, day: String, month: String, time: String) {
         guard let d = date(s) else { return ("", "", "", "") }

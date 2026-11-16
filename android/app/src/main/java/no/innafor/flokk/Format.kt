@@ -11,6 +11,7 @@ object Fmt {
     private val oslo: ZoneId = ZoneId.of("Europe/Oslo")
     private val nb = Locale.forLanguageTag("nb-NO")
     private val dateTimeF = DateTimeFormatter.ofPattern("EEEE d. MMMM 'kl.' HH:mm", nb)
+    private val dateTimeYearF = DateTimeFormatter.ofPattern("EEEE d. MMMM yyyy 'kl.' HH:mm", nb)
     private val shortF = DateTimeFormatter.ofPattern("d. MMM HH:mm", nb)
     private val timeF = DateTimeFormatter.ofPattern("HH:mm", nb)
     private val weekdayF = DateTimeFormatter.ofPattern("EEE", nb)
@@ -19,8 +20,11 @@ object Fmt {
     fun parse(iso: String): ZonedDateTime? =
         runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(oslo) }.getOrNull()
 
-    /** «lørdag 5. desember kl. 17:00» */
-    fun dateTime(iso: String): String = parse(iso)?.format(dateTimeF) ?: iso
+    /** «lørdag 5. desember kl. 17:00» – med årstall når datoen ikke er i år. */
+    fun dateTime(iso: String): String {
+        val d = parse(iso) ?: return iso
+        return d.format(if (d.year == LocalDate.now(oslo).year) dateTimeF else dateTimeYearF)
+    }
 
     /** Klokkeslett i dag, ellers «11. nov. 14:55». */
     fun messageTime(iso: String): String {

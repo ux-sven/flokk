@@ -41,15 +41,42 @@ struct GroupView: View {
                             .buttonStyle(.borderedProminent)
                             .buttonBorderShape(.capsule)
                     }
-                    if events.isEmpty {
-                        Text("Ingen arrangementer ennå.")
+                    let sections = EventSections(events)
+                    if sections.upcoming.isEmpty && sections.voting.isEmpty {
+                        Text(sections.past.isEmpty ? "Ingen arrangementer ennå." : "Ingen kommende arrangementer.")
                             .foregroundStyle(.secondary)
                             .padding(20)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .card()
                     }
-                    ForEach(events) { e in
-                        NavigationLink(value: Route.event(e.id)) { EventCard(event: e) }.buttonStyle(.plain)
+                    EventSectionList(title: "Kommende", events: sections.upcoming)
+                    EventSectionList(title: "Stemming pågår", events: sections.voting)
+                    if !sections.past.isEmpty {
+                        DisclosureGroup {
+                            VStack(spacing: 0) {
+                                ForEach(sections.past) { e in
+                                    NavigationLink(value: Route.event(e.id)) {
+                                        HStack {
+                                            Text(e.title).lineLimit(1)
+                                            Spacer()
+                                            Text(e.chosen.map { Fmt.dateTime($0.startsAt) } ?? "")
+                                                .font(.caption).foregroundStyle(.secondary)
+                                        }
+                                        .padding(.vertical, 8)
+                                        .contentShape(.rect)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.top, 8)
+                        } label: {
+                            Label("Tidligere arrangementer · \(sections.past.count)", systemImage: "clock.arrow.circlepath")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 14)
+                        .card()
                     }
                 }
 
@@ -258,7 +285,7 @@ struct GroupView: View {
     private func load() async {
         async let ev: [EventSummary] = supabase
             .from("events")
-            .select("id, title, status, location, backdrop, chosen:event_time_options!events_chosen_option_fk(starts_at)")
+            .select("id, title, status, location, backdrop, created_at, chosen:event_time_options!events_chosen_option_fk(starts_at)")
             .eq("group_id", value: group.id)
             .neq("status", value: "cancelled")
             .is("archived_at", value: nil)
@@ -276,6 +303,23 @@ struct GroupView: View {
         if let uid = auth.userId, let l: Level = try? await supabase.from("group_members").select("notify_level")
             .eq("group_id", value: group.id).eq("user_id", value: uid).single().decoded() {
             notifyLevel = l.notifyLevel
+        }
+    }
+}
+
+struct EventSectionList: View {
+    let title: String
+    let events: [EventSummary]
+
+    var body: some View {
+        if !events.isEmpty {
+            Text("\(title) · \(events.count)".uppercased())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+            ForEach(events) { e in
+                NavigationLink(value: Route.event(e.id)) { EventCard(event: e) }.buttonStyle(.plain)
+            }
         }
     }
 }
