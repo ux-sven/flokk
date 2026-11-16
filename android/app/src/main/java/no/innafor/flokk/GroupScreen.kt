@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -91,6 +92,7 @@ fun GroupScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var inviting by remember { mutableStateOf(false) }
     var editingLook by remember { mutableStateOf(false) }
+    var editingSettings by remember { mutableStateOf(false) }
     var confirmLeave by remember { mutableStateOf(false) }
     var memberToRemove by remember { mutableStateOf<Member?>(null) }
     var notifyLevel by remember { mutableStateOf("all") }
@@ -156,6 +158,16 @@ fun GroupScreen(
     group?.let { g ->
         if (inviting) InviteDialog(g) { inviting = false }
         if (editingLook) AppearanceSheet(g.tint ?: "mint", g.backdrop, ::setLook) { editingLook = false }
+        if (editingSettings) GroupSettingsSheet(
+            group = g,
+            members = members,
+            me = me,
+            isOwner = myRole == "owner",
+            onSaved = { group = it; AppRouter.groupsVersion.value++ },
+            onMembersChanged = { members = runCatching { loadMembers(groupId) }.getOrDefault(members) },
+            onDeleted = { AppRouter.groupsVersion.value++; onBack() },
+            onDismiss = { editingSettings = false },
+        )
     }
     if (confirmLeave) ConfirmDialog(
         "Melde deg ut av ${group?.name}?",
@@ -211,6 +223,10 @@ fun GroupScreen(
                                 DropdownMenuItem(
                                     text = { Text("Utseende") }, leadingIcon = { Icon(Icons.Default.Palette, null) },
                                     onClick = { menuOpen = false; editingLook = true },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Innstillinger") }, leadingIcon = { Icon(Icons.Default.Settings, null) },
+                                    onClick = { menuOpen = false; editingSettings = true },
                                 )
                             }
                             HorizontalDivider()
@@ -326,7 +342,7 @@ fun GroupScreen(
 }
 
 @Serializable private data class LevelRow(@SerialName("notify_level") val notifyLevel: String)
-@Serializable private data class UserIdRow(@SerialName("user_id") val userId: String)
+@Serializable data class UserIdRow(@SerialName("user_id") val userId: String)
 
 suspend fun loadMembers(groupId: String): List<Member> =
     supabase.from("group_members").select(Columns.raw("user_id, role, profiles(id, display_name, avatar_url)")) {

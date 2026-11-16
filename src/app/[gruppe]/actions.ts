@@ -83,6 +83,34 @@ export async function createEvent(
   redirect(`/${slug}/arrangement/${event.id}`);
 }
 
+export type EditEventState = { error?: string };
+
+export async function updateEvent(
+  slug: string,
+  eventId: string,
+  _prev: EditEventState,
+  formData: FormData,
+): Promise<EditEventState> {
+  await requireUser(`/${slug}/arrangement/${eventId}/rediger`);
+  const title = String(formData.get("title") ?? "").trim().slice(0, 120);
+  const description = String(formData.get("description") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim().slice(0, 200) || null;
+  const coords = location ? parseCoords(formData.get("location_lat"), formData.get("location_lng")) : null;
+  if (title.length < 2) return { error: "Gi arrangementet en tittel." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .update({ title, description, location, location_lat: coords?.lat ?? null, location_lng: coords?.lng ?? null })
+    .eq("id", eventId)
+    .select("id");
+  if (error) return { error: "Kunne ikke lagre endringene." };
+  if (!data?.length) return { error: "Bare arrangøren eller en admin kan endre arrangementet." };
+
+  revalidatePath(`/${slug}`);
+  redirect(`/${slug}/arrangement/${eventId}`);
+}
+
 export async function chooseTime(slug: string, eventId: string, optionId: string | null) {
   const supabase = await createClient();
   await supabase
@@ -241,4 +269,64 @@ export async function setEventBackdrop(slug: string, eventId: string, backdrop: 
   revalidatePath(`/${slug}`, "layout");
   revalidatePath("/");
   return {};
+}
+
+export type GroupSettingsState = { error?: string; saved?: boolean };
+
+export async function updateGroup(
+  groupId: string,
+  slug: string,
+  _prev: GroupSettingsState,
+  formData: FormData,
+): Promise<GroupSettingsState> {
+  await requireUser(`/${slug}/innstillinger`);
+  const name = String(formData.get("name") ?? "").trim().slice(0, 80);
+  const description = String(formData.get("description") ?? "").trim().slice(0, 500);
+  const visibility = formData.get("visibility") === "open" ? "open" : "invite_only";
+  const emoji = String(formData.get("emoji") ?? "").trim().slice(0, 8) || null;
+  if (name.length < 2) return { error: "Gi flokken et navn på minst to tegn." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("groups")
+    .update({ name, description, visibility, emoji })
+    .eq("id", groupId)
+    .select("id");
+  if (error) return { error: "Kunne ikke lagre endringene." };
+  if (!data?.length) return { error: "Bare admins kan endre flokken." };
+  revalidatePath(`/${slug}`, "layout");
+  revalidatePath("/");
+  return { saved: true };
+}
+
+export async function setMemberRole(groupId: string, slug: string, memberId: string, role: "admin" | "member") {
+  await requireUser(`/${slug}/innstillinger`);
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("group_members")
+    .update({ role })
+    .eq("group_id", groupId)
+    .eq("user_id", memberId)
+    .select("user_id");
+  revalidatePath(`/${slug}`, "layout");
+  if (!data?.length) return { error: "Bare eieren kan endre roller." };
+}
+
+export async function transferOwnership(groupId: string, slug: string, newOwnerId: string) {
+  await requireUser(`/${slug}/innstillinger`);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("transfer_group_ownership", { gid: groupId, new_owner: newOwnerId });
+  revalidatePath(`/${slug}`, "layout");
+  if (error) return { error: error.message || "Kunne ikke overføre eierskapet." };
+}
+
+export async function deleteGroup(groupId: string, slug: string, confirmName: string) {
+  await requireUser(`/${slug}/innstillinger`);
+  const supabase = await createClient();
+  const { data: group } = await supabase.from("groups").select("name").eq("id", groupId).maybeSingle();
+  if (!group || confirmName.trim() !== group.name) return { error: "Navnet stemmer ikke." };
+  const { data, error } = await supabase.from("groups").delete().eq("id", groupId).select("id");
+  if (error || !data?.length) return { error: "Bare eieren kan slette flokken." };
+  revalidatePath("/");
+  redirect("/");
 }

@@ -2,7 +2,8 @@ import Supabase
 import SwiftUI
 
 struct GroupView: View {
-    let group: FlokkGroup
+    @State private var group: FlokkGroup
+    @State private var editingSettings = false
     @Environment(AuthModel.self) private var auth
     @Environment(\.scenePhase) private var scenePhase
     @State private var events: [EventSummary] = []
@@ -17,6 +18,8 @@ struct GroupView: View {
     @State private var look: (tint: String?, backdrop: String?)?
     @State private var error: String?
     @Environment(Router.self) private var router
+
+    init(group: FlokkGroup) { _group = State(initialValue: group) }
 
     private var myRole: String? { members.first { $0.userId == auth.userId }?.role }
     private var isAdmin: Bool { myRole == "owner" || myRole == "admin" }
@@ -131,6 +134,20 @@ struct GroupView: View {
         .toolbar { groupMenu }
         .sheet(isPresented: $inviting) { InviteSheet(group: group).presentationDetents([.medium]) }
         .sheet(isPresented: $editingLook) { lookSheet }
+        .sheet(isPresented: $editingSettings) {
+            GroupSettingsView(
+                group: group, members: members, myUserId: auth.userId, isOwner: myRole == "owner",
+                onSaved: { g in
+                    group = g
+                    router.groupsVersion += 1
+                },
+                onMembersChanged: { await load() },
+                onDeleted: {
+                    router.groupsVersion += 1
+                    router.path = []
+                }
+            )
+        }
         .confirmationDialog("Melde deg ut av \(group.name)?", isPresented: $confirmLeave, titleVisibility: .visible) {
             Button("Meld meg ut", role: .destructive) { Task { await leave() } }
         } message: {
@@ -186,6 +203,7 @@ struct GroupView: View {
             if isAdmin {
                 Button { inviting = true } label: { Label("Inviter folk", systemImage: "person.badge.plus") }
                 Button { editingLook = true } label: { Label("Utseende", systemImage: "paintpalette") }
+                Button { editingSettings = true } label: { Label("Innstillinger", systemImage: "gearshape") }
             }
             Picker(selection: Binding(get: { notifyLevel }, set: { v in Task { await setNotify(v) } })) {
                 Text("Alt").tag("all")

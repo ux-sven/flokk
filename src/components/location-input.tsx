@@ -15,16 +15,21 @@ export function LocationInput({
   id = "location",
   name = "location",
   defaultValue = "",
+  defaultCoords = null,
   placeholder = "Hos Kari, eller søk etter adresse",
 }: {
   id?: string;
   name?: string;
   defaultValue?: string;
+  /** Koordinatene til et sted som allerede er valgt (ved redigering) */
+  defaultCoords?: { lat: number; lng: number } | null;
   placeholder?: string;
 }) {
   const listId = useId();
   const [text, setText] = useState(defaultValue);
-  const [picked, setPicked] = useState<Place | null>(null);
+  const [picked, setPicked] = useState<Place | null>(() =>
+    defaultValue && defaultCoords ? { label: defaultValue, detail: "", kind: "address", ...defaultCoords } : null,
+  );
   const [results, setResults] = useState<Place[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);

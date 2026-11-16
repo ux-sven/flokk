@@ -15,6 +15,7 @@ struct EventView: View {
     @State private var channel: RealtimeChannelV2?
     @State private var suggesting = false
     @State private var editingBackdrop = false
+    @State private var editingDetails = false
     @State private var confirmChoose: TimeOption?
     @State private var confirmDelete = false
 
@@ -68,6 +69,11 @@ struct EventView: View {
                 .presentationDetents([.medium])
         }
         .sheet(isPresented: $editingBackdrop) { backdropSheet }
+        .sheet(isPresented: $editingDetails) {
+            if let event {
+                EditEventView(event: event) { patch in await update(patch) }
+            }
+        }
         .confirmationDialog(
             "Velge \(confirmChoose.map { Fmt.dateTime($0.startsAt) } ?? "")?",
             isPresented: Binding(get: { confirmChoose != nil }, set: { if !$0 { confirmChoose = nil } }),
@@ -131,6 +137,9 @@ struct EventView: View {
                     get: { e.allowTimeSuggestions ?? false },
                     set: { v in Task { await update(["allow_time_suggestions": .bool(v)]) } }
                 ))
+            }
+            if !isArchived {
+                Button { editingDetails = true } label: { Label("Rediger", systemImage: "pencil") }
             }
             Button { editingBackdrop = true } label: { Label("Bakgrunn", systemImage: "paintpalette") }
             Divider()
@@ -341,15 +350,18 @@ struct EventView: View {
         await load()
     }
 
-    private func update(_ patch: [String: AnyJSON]) async {
+    @discardableResult
+    private func update(_ patch: [String: AnyJSON]) async -> Bool {
         do {
             let rows: [EventDetail] = try await supabase.from("events").update(patch).eq("id", value: eventId)
                 .select("id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
                 .decoded()
-            if let e = rows.first { event = e } else { error = "Bare arrangøren eller en admin kan endre dette." }
+            if let e = rows.first { event = e; return true }
+            error = "Bare arrangøren eller en admin kan endre dette."
         } catch {
             self.error = "Kunne ikke lagre endringen."
         }
+        return false
     }
 
     private func deleteEvent() async {

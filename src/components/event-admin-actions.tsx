@@ -1,8 +1,9 @@
 "use client";
 
 import { useTransition } from "react";
-import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { deleteEvent, setEventArchived } from "@/app/[gruppe]/actions";
 
 export function EventAdminActions({
@@ -40,6 +41,11 @@ export function EventAdminActions({
 
   return (
     <div className="flex flex-wrap gap-2">
+      {!archived && (
+        <Link href={`/${slug}/arrangement/${eventId}/rediger`} className={buttonVariants({ variant: "outline" })}>
+          <Pencil /> Rediger
+        </Link>
+      )}
       <Button variant="outline" onClick={toggleArchive} disabled={pending}>
         {archived ? <ArchiveRestore /> : <Archive />}
         {archived ? "Gjenopprett" : "Arkiver"}

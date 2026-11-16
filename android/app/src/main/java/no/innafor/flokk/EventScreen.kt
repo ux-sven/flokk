@@ -80,6 +80,7 @@ import java.time.Instant
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Palette
@@ -105,6 +106,7 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     var menuOpen by remember { mutableStateOf(false) }
     var suggesting by remember { mutableStateOf(false) }
     var editingBackdrop by remember { mutableStateOf(false) }
+    var editingDetails by remember { mutableStateOf(false) }
     var confirmChoose by remember { mutableStateOf<TimeOption?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -123,16 +125,20 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     }
 
     /** Oppdaterer arrangementet; tom liste betyr at RLS nektet. */
+    suspend fun save(patch: JsonObject): Boolean {
+        val rows = runCatching {
+            supabase.from("events").update(patch) {
+                select(Columns.raw(EVENT_COLUMNS))
+                filter { eq("id", eventId) }
+            }.decodeList<EventDetail>()
+        }.getOrElse { error = "Kunne ikke lagre endringen."; return false }
+        val e = rows.firstOrNull() ?: run { error = "Bare arrangøren eller en admin kan endre dette."; return false }
+        event = e
+        return true
+    }
+
     fun update(patch: JsonObject) {
-        scope.launch {
-            runCatching {
-                supabase.from("events").update(patch) {
-                    select(Columns.raw(EVENT_COLUMNS))
-                    filter { eq("id", eventId) }
-                }.decodeList<EventDetail>()
-            }.onSuccess { rows -> rows.firstOrNull()?.let { event = it } ?: run { error = "Bare arrangøren eller en admin kan endre dette." } }
-                .onFailure { error = "Kunne ikke lagre endringen." }
-        }
+        scope.launch { save(patch) }
     }
 
     suspend fun load() {
@@ -237,6 +243,9 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
         },
         onDismiss = { confirmDelete = false },
     )
+    if (editingDetails) event?.let { e ->
+        EditEventSheet(e, ::save) { editingDetails = false }
+    }
     if (editingBackdrop) event?.let { e ->
         BackdropSheet(e.backdrop?.takeIf { it in backdropDrawables }, e.groups?.backdrop to e.groups?.tint, { b ->
             update(buildJsonObject { if (b == null) put("backdrop", JsonNull) else put("backdrop", b) })
@@ -255,6 +264,10 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
                                 text = { Text("Andre kan foreslå tidspunkt") },
                                 trailingIcon = { Switch(event?.allowTimeSuggestions == true, onCheckedChange = null) },
                                 onClick = { update(buildJsonObject { put("allow_time_suggestions", event?.allowTimeSuggestions != true) }) },
+                            )
+                            if (!isArchived) DropdownMenuItem(
+                                text = { Text("Rediger") }, leadingIcon = { Icon(Icons.Default.Edit, null) },
+                                onClick = { menuOpen = false; editingDetails = true },
                             )
                             DropdownMenuItem(
                                 text = { Text("Bakgrunn") }, leadingIcon = { Icon(Icons.Default.Palette, null) },

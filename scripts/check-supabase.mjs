@@ -99,6 +99,15 @@ if (dev.body?.code === "PGRST205" || dev.body?.code === "42P01")
   bad("Mangler push til iOS-appen", "Kjør 20261116100000_device_tokens.sql");
 else ok("Push til mobilappene er satt opp (migrasjon 11)");
 
+// Funksjonen er stengt for utloggede, så den svarer «permission denied» når den finnes og PGRST202 når den mangler
+const owner = await call("/rest/v1/rpc/transfer_group_ownership", {
+  method: "POST",
+  body: JSON.stringify({ gid: "00000000-0000-0000-0000-000000000000", new_owner: "00000000-0000-0000-0000-000000000000" }),
+});
+if (owner.body?.code === "PGRST202")
+  bad("Mangler redigering og overføring av eierskap", "Kjør 20261116120000_edit_and_ownership.sql");
+else ok("Redigering og overføring av eierskap er satt opp (migrasjon 12)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

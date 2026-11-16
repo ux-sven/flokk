@@ -2,11 +2,11 @@ import { Suspense } from "react";
 import Loading from "@/app/loading";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Archive, CalendarPlus, ChevronDown, Globe, History, Lock } from "lucide-react";
+import { Archive, CalendarPlus, ChevronDown, Globe, History, Lock, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Chat } from "@/components/chat";
-import { CopyLink } from "@/components/copy-link";
+import { CopyLink, iconButtonClass } from "@/components/copy-link";
 import { GroupAppearanceButton } from "@/components/group-appearance-button";
 import { InvitePanel } from "@/components/invite-panel";
 import { MarkRead } from "@/components/mark-read";
@@ -55,8 +55,14 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
               initial={{ tint: asTint(group.tint), backdrop: asBackdrop(group.backdrop) }}
             />
           )}
+          {isAdmin && (
+            <Link href={`/${group.slug}/innstillinger`} className={iconButtonClass} title="Innstillinger">
+              <Settings />
+              <span className="sr-only">Innstillinger for flokken</span>
+            </Link>
+          )}
         </div>
-        <div className={cn("flex flex-wrap items-start gap-4", isAdmin ? "pr-20" : "pr-10")}>
+        <div className={cn("flex flex-wrap items-start gap-4", isAdmin ? "pr-30" : "pr-10")}>
           <span className="text-5xl" aria-hidden>
             {group.emoji ?? "🪺"}
           </span>
@@ -263,7 +269,13 @@ async function MemberView({
           </section>
           <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
           {isOwner ? (
-            <p className="px-2 text-center text-xs text-muted-foreground">Du er eier av flokken og kan derfor ikke melde deg ut.</p>
+            <p className="px-2 text-center text-xs text-muted-foreground">
+              Du er eier av flokken. For å melde deg ut må du{" "}
+              <Link href={`/${slug}/innstillinger`} className="underline underline-offset-2 hover:text-foreground">
+                overføre eierskapet
+              </Link>{" "}
+              først.
+            </p>
           ) : (
             <LeaveGroupButton groupId={groupId} slug={slug} name={groupName} />
           )}
