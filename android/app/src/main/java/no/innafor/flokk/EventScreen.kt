@@ -93,7 +93,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 
 private const val EVENT_COLUMNS =
-    "id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, group_id, groups(tint, backdrop), allow_time_suggestions, archived_at"
+    "id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, group_id, groups(tint, backdrop, slug), allow_time_suggestions, archived_at"
 
 @Composable
 fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) -> Unit) {
@@ -107,6 +107,7 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     var suggesting by remember { mutableStateOf(false) }
     var editingBackdrop by remember { mutableStateOf(false) }
     var editingDetails by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     var confirmChoose by remember { mutableStateOf<TimeOption?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -180,10 +181,11 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
     }
 
     /** Trykk på valgt svar igjen fjerner stemmen (som på web og iOS). */
-    fun vote(optionId: String, answer: VoteAnswer) {
+    fun vote(optionId: String, answer: VoteAnswer, toggle: Boolean = true) {
         val uid = me ?: return
         val before = options
         val current = options.firstOrNull { it.id == optionId }?.eventVotes?.firstOrNull { it.userId == uid }?.answer
+        if (!toggle && current == answer.value) return
         options = options.map { o ->
             if (o.id != optionId) o
             else o.copy(eventVotes = o.eventVotes.filter { it.userId != uid } +
@@ -309,9 +311,18 @@ fun EventScreen(eventId: String, onBack: () -> Unit, onChat: (String, String) ->
                 )
             }
             item { EventHeader(e, options.firstOrNull { it.id == e.chosenOptionId }) }
+            options.firstOrNull { it.id == e.chosenOptionId }?.takeIf { !isArchived }?.let { c ->
+                item(key = "attendance") {
+                    AttendanceCard(
+                        c, members, me,
+                        onAnswer = { vote(c.id, it, toggle = false) },
+                        onAddToCalendar = { addToCalendar(context, e, c.startsAt, siteUrl("/${e.groups?.slug ?: ""}/arrangement/${e.id}")) },
+                    )
+                }
+            }
             item {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Tidspunkter", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Text(if (e.chosenOptionId == null) "Tidspunkter" else "Tidspunkt", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     if (canSuggest) OutlinedButton(onClick = { suggesting = true }) {
                         Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))

@@ -87,7 +87,7 @@ data class EventDetail(
     @SerialName("archived_at") val archivedAt: String? = null,
 ) {
     @Serializable
-    data class GroupLook(val tint: String? = null, val backdrop: String? = null)
+    data class GroupLook(val tint: String? = null, val backdrop: String? = null, val slug: String? = null)
 }
 
 enum class VoteAnswer(val value: String, val label: String) {

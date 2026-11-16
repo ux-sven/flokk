@@ -16,6 +16,8 @@ struct EventView: View {
     @State private var suggesting = false
     @State private var editingBackdrop = false
     @State private var editingDetails = false
+    @State private var addingToCalendar = false
+    @State private var groupSlug: String?
     @State private var confirmChoose: TimeOption?
     @State private var confirmDelete = false
 
@@ -40,6 +42,13 @@ struct EventView: View {
                             .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: 16))
                     }
                     header(event)
+                    if let c = chosen, !isArchived {
+                        AttendanceCard(
+                            option: c, members: members, myUserId: auth.userId,
+                            onAnswer: { a in Task { await vote(c.id, a, toggle: false) } },
+                            onAddToCalendar: { addingToCalendar = true }
+                        )
+                    }
                     voting
                     TaskListView(eventId: event.id, tasks: tasks, members: members, onChange: { await loadTasks() })
                     if let groupId {
@@ -69,6 +78,18 @@ struct EventView: View {
                 .presentationDetents([.medium])
         }
         .sheet(isPresented: $editingBackdrop) { backdropSheet }
+        .sheet(isPresented: $addingToCalendar) {
+            if let e = event, let c = chosen, let start = Fmt.date(c.startsAt) {
+                CalendarEventSheet(
+                    title: e.title,
+                    start: start,
+                    location: e.location,
+                    notes: e.description.isEmpty ? nil : e.description,
+                    url: groupSlug.map { siteURL("/\($0)/arrangement/\(e.id.uuidString.lowercased())") }
+                )
+                .ignoresSafeArea()
+            }
+        }
         .sheet(isPresented: $editingDetails) {
             if let event {
                 EditEventView(event: event) { patch in await update(patch) }
@@ -181,7 +202,7 @@ struct EventView: View {
     @ViewBuilder private var voting: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Tidspunkter").font(.title2.bold())
+                Text(event?.chosenOptionId == nil ? "Tidspunkter" : "Tidspunkt").font(.title2.bold())
                 Spacer()
                 if canSuggest && event?.chosenOptionId == nil {
                     Button { suggesting = true } label: { Label("Foreslå", systemImage: "plus") }
@@ -242,7 +263,7 @@ struct EventView: View {
             async let detail: EventDetail = supabase.from("events")
                 .select("id, title, description, location, location_lat, location_lng, backdrop, status, chosen_option_id, created_by, allow_time_suggestions, archived_at")
                 .eq("id", value: eventId).single().decoded()
-            async let g: EventGroupRow = supabase.from("events").select("group_id, groups(tint, backdrop)").eq("id", value: eventId).single().decoded()
+            async let g: EventGroupRow = supabase.from("events").select("group_id, groups(tint, backdrop, slug)").eq("id", value: eventId).single().decoded()
             async let opts: [TimeOption] = supabase.from("event_time_options")
                 .select("id, starts_at, created_by, event_votes(option_id, user_id, answer)")
                 .eq("event_id", value: eventId).order("starts_at").decoded()
@@ -253,6 +274,7 @@ struct EventView: View {
             event = try await detail
             groupId = row.groupId
             groupLook = (row.groups?.tint, row.groups?.backdrop)
+            groupSlug = row.groups?.slug
             options = try await opts
             members = (try? await mem) ?? []
             await loadTasks()
@@ -289,12 +311,16 @@ struct EventView: View {
     }
 
     /// Trykk på valgt svar igjen fjerner stemmen (som på web).
-    private func vote(_ optionId: UUID, _ answer: VoteAnswer) async {
+    private func vote(_ optionId: UUID, _ answer: VoteAnswer, toggle: Bool = true) async {
         guard let uid = auth.userId, let i = options.firstIndex(where: { $0.id == optionId }) else { return }
         let before = options
         let current = options[i].eventVotes.first { $0.userId == uid }?.answer
         options[i].eventVotes.removeAll { $0.userId == uid }
         do {
+            if current == answer && !toggle {
+                options[i].eventVotes.append(Vote(optionId: optionId, userId: uid, answer: answer))
+                return
+            }
             if current == answer {
                 try await supabase.from("event_votes").delete()
                     .eq("option_id", value: optionId).eq("user_id", value: uid).execute()
@@ -377,7 +403,7 @@ struct EventView: View {
 }
 
 nonisolated private struct EventGroupRow: Decodable {
-    struct Look: Decodable { let tint: String?; let backdrop: String? }
+    struct Look: Decodable { let tint: String?; let backdrop: String?; let slug: String? }
     let groupId: UUID
     let groups: Look?
 }

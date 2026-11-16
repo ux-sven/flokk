@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Archive, CalendarCheck, ExternalLink, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Attendance } from "@/components/attendance";
 import { Chat } from "@/components/chat";
 import { EventAppearanceButton } from "@/components/event-appearance-button";
 import { EventAdminActions } from "@/components/event-admin-actions";
@@ -151,9 +152,20 @@ async function EventPageContent({ params }: Params) {
           <OnlineNow people={people} currentUserId={user.id} />
         </header>
 
+        {chosen && !isArchived && (
+          <Attendance
+            optionId={chosen.id}
+            startsAt={chosen.starts_at}
+            initialVotes={votes}
+            people={people}
+            currentUserId={user.id}
+            calendarHref={`/${group.slug}/arrangement/${event.id}/kalender`}
+          />
+        )}
+
         <section className="space-y-3 rounded-3xl bg-card p-5 shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-semibold">Når passer det?</h2>
+            <h2 className="text-xl font-semibold">{chosen ? "Tidspunkt" : "Når passer det?"}</h2>
             {canManage && (
               <SuggestionsToggle slug={group.slug} eventId={event.id} allowed={event.allow_time_suggestions} />
             )}
