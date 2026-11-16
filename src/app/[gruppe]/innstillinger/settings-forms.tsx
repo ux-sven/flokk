@@ -23,7 +23,13 @@ export function GroupSettingsForm({
 }: {
   groupId: string;
   slug: string;
-  initial: { name: string; description: string; emoji: string; visibility: "open" | "invite_only" };
+  initial: {
+    name: string;
+    description: string;
+    emoji: string;
+    visibility: "open" | "invite_only";
+    membersCanInvite: boolean;
+  };
 }) {
   const [state, action, pending] = useActionState<GroupSettingsState, FormData>(
     updateGroup.bind(null, groupId, slug),
@@ -65,6 +71,20 @@ export function GroupSettingsForm({
           </label>
         </div>
       </fieldset>
+      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border bg-card p-4">
+        <input
+          type="checkbox"
+          name="members_can_invite"
+          defaultChecked={initial.membersCanInvite}
+          className="mt-1 size-4 accent-emerald-600"
+        />
+        <span>
+          <span className="block font-medium">Alle medlemmer kan invitere</span>
+          <span className="text-sm text-muted-foreground">
+            Slår du av dette, er det bare admins som kan lage invitasjonslenker.
+          </span>
+        </span>
+      </label>
       <p className="text-xs text-muted-foreground">
         Adressen (/{slug}) endres ikke, så lenker som er delt fortsetter å virke. Farge og bakgrunn endrer du med
         palett-knappen på flokksiden.

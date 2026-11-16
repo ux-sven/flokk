@@ -9,6 +9,8 @@ nonisolated struct FlokkGroup: Decodable, Identifiable, Hashable {
     let tint: String?
     let backdrop: String?
     let emoji: String?
+    /// Fra migrasjon 13; mangler før den er kjørt
+    var membersCanInvite: Bool?
 }
 
 nonisolated struct Membership: Decodable {

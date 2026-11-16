@@ -10,7 +10,8 @@ export const loadGroup = cache(async (slug: string) => {
   const [{ data: group }, { data: auth }] = await Promise.all([
     supabase
       .from("groups")
-      .select("id, slug, name, description, visibility, tint, backdrop, emoji")
+      // «*» så siden virker også før nye kolonner er migrert
+      .select("*")
       .eq("slug", slug)
       .maybeSingle<Group>(),
     supabase.auth.getUser(),

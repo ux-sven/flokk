@@ -108,6 +108,11 @@ if (owner.body?.code === "PGRST202")
   bad("Mangler redigering og overføring av eierskap", "Kjør 20261116120000_edit_and_ownership.sql");
 else ok("Redigering og overføring av eierskap er satt opp (migrasjon 12)");
 
+const invite = await call("/rest/v1/groups?select=members_can_invite&limit=1");
+if (invite.body?.code === "42703")
+  bad("Mangler invitasjon for vanlige medlemmer", "Kjør 20261116140000_members_can_invite.sql");
+else ok("Medlemmer kan invitere (migrasjon 13)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

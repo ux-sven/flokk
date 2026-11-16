@@ -23,6 +23,7 @@ struct GroupView: View {
 
     private var myRole: String? { members.first { $0.userId == auth.userId }?.role }
     private var isAdmin: Bool { myRole == "owner" || myRole == "admin" }
+    private var canInvite: Bool { isAdmin || (myRole != nil && group.membersCanInvite == true) }
     private var tint: String? { look?.tint ?? group.tint }
     private var backdrop: String? { look.map { $0.backdrop } ?? group.backdrop }
 
@@ -113,7 +114,7 @@ struct GroupView: View {
                             }
                         }
                     }
-                    if isAdmin {
+                    if canInvite {
                         Button { inviting = true } label: {
                             Label("Inviter folk", systemImage: "person.badge.plus").frame(maxWidth: .infinity)
                         }
@@ -200,8 +201,10 @@ struct GroupView: View {
     private var groupMenu: some View {
         Menu {
             ShareLink(item: siteURL("/\(group.slug)")) { Label("Del lenke til flokken", systemImage: "link") }
-            if isAdmin {
+            if canInvite {
                 Button { inviting = true } label: { Label("Inviter folk", systemImage: "person.badge.plus") }
+            }
+            if isAdmin {
                 Button { editingLook = true } label: { Label("Utseende", systemImage: "paintpalette") }
                 Button { editingSettings = true } label: { Label("Innstillinger", systemImage: "gearshape") }
             }
@@ -268,7 +271,7 @@ struct GroupView: View {
             let rows: [FlokkGroup] = try await supabase.from("groups")
                 .update(["tint": AnyJSON.string(tint), "backdrop": backdrop.map(AnyJSON.string) ?? .null])
                 .eq("id", value: group.id)
-                .select("id, slug, name, description, visibility, tint, backdrop, emoji").decoded()
+                .select("*").decoded()
             if rows.isEmpty { look = before; error = "Bare admins kan endre utseendet." }
             router.groupsVersion += 1
         } catch {

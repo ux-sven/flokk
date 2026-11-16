@@ -44,7 +44,7 @@ final class Router {
         }
         Task {
             let group: FlokkGroup? = try? await supabase.from("groups")
-                .select("id, slug, name, description, visibility, tint, backdrop, emoji")
+                .select("*")
                 .eq("slug", value: first).single().decoded()
             guard let group else { return }
             var next: [Route] = [.group(group)]
@@ -58,7 +58,7 @@ final class Router {
     func open(_ target: PushTarget) {
         Task {
             let group: FlokkGroup? = try? await supabase.from("groups")
-                .select("id, slug, name, description, visibility, tint, backdrop, emoji")
+                .select("*")
                 .eq("id", value: target.groupId).single().decoded()
             guard let group else { return }
             var next: [Route] = [.group(group)]

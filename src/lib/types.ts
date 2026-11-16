@@ -13,6 +13,8 @@ export type Group = {
   tint: string;
   backdrop: string | null;
   emoji: string | null;
+  /** Fra migrasjon 13; mangler før den er kjørt */
+  members_can_invite?: boolean;
 };
 
 export type Member = { user_id: string; role: Role; profiles: Profile | null };

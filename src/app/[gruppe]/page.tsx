@@ -10,6 +10,7 @@ import { CopyLink, iconButtonClass } from "@/components/copy-link";
 import { GroupAppearanceButton } from "@/components/group-appearance-button";
 import { InvitePanel } from "@/components/invite-panel";
 import { MarkRead } from "@/components/mark-read";
+import { GroupTabs } from "@/components/group-tabs";
 import { OnlineNow, PresenceAvatar, PresenceProvider } from "@/components/presence";
 import { NotifyLevelPicker } from "@/components/notify-level-picker";
 import { LeaveGroupButton } from "@/components/leave-group-button";
@@ -52,7 +53,10 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
               key={`${group.tint}:${group.backdrop}`}
               groupId={group.id}
               slug={group.slug}
-              initial={{ tint: asTint(group.tint), backdrop: asBackdrop(group.backdrop) }}
+              initial={{
+                tint: asTint(group.tint),
+                backdrop: asBackdrop(group.backdrop),
+              }}
             />
           )}
           {isAdmin && (
@@ -102,6 +106,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
           userId={user.id}
           isAdmin={isAdmin}
           isOwner={role === "owner"}
+          canInvite={isAdmin || group.members_can_invite === true}
         />
       ) : (
         <p className="text-muted-foreground">Bli med i flokken for å se arrangementer, medlemmer og chat.</p>
@@ -118,6 +123,7 @@ async function MemberView({
   userId,
   isAdmin,
   isOwner,
+  canInvite,
 }: {
   supabase: Awaited<ReturnType<typeof loadGroup>>["supabase"];
   groupId: string;
@@ -126,12 +132,15 @@ async function MemberView({
   userId: string;
   isAdmin: boolean;
   isOwner: boolean;
+  canInvite: boolean;
 }) {
   const [members, { data: events }, { data: messages }, { data: me }, { data: archived }] = await Promise.all([
     loadMembers(groupId),
     supabase
       .from("events")
-      .select("id, title, status, location, backdrop, created_at, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)")
+      .select(
+        "id, title, status, location, backdrop, created_at, chosen:event_time_options!events_chosen_option_fk(starts_at), event_time_options!event_time_options_event_id_fkey(count)",
+      )
       .eq("group_id", groupId)
       .neq("status", "cancelled")
       .is("archived_at", null)
@@ -162,12 +171,18 @@ async function MemberView({
   const { voting, upcoming, past } = splitEvents(eventList);
   const names = Object.fromEntries(members.map((m) => [m.user_id, m.profiles?.display_name || "Medlem"]));
 
-  const people = members.map((m) => ({ id: m.user_id, name: names[m.user_id], avatar: m.profiles?.avatar_url }));
+  const people = members.map((m) => ({
+    id: m.user_id,
+    name: names[m.user_id],
+    avatar: m.profiles?.avatar_url,
+  }));
 
   return (
     <PresenceProvider groupId={groupId} userId={userId}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="space-y-6">
+      <MarkRead groupId={groupId} />
+      <GroupTabs
+        memberCount={members.length}
+        events={
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-2xl font-bold tracking-tight">Arrangementer</h2>
@@ -177,8 +192,8 @@ async function MemberView({
             </div>
             {!upcoming.length && !voting.length ? (
               <div className="rounded-3xl bg-card p-6 text-muted-foreground shadow-card">
-                {past.length ? "Ingen kommende arrangementer." : "Ingen arrangementer ennå."} Foreslå noen
-                tidspunkter og la flokken stemme!
+                {past.length ? "Ingen kommende arrangementer." : "Ingen arrangementer ennå."} Foreslå noen tidspunkter
+                og la flokken stemme!
               </div>
             ) : (
               <>
@@ -233,8 +248,8 @@ async function MemberView({
               </details>
             )}
           </section>
-
-          <MarkRead groupId={groupId} />
+        }
+        chat={
           <div id="chat" className="scroll-mt-20">
             <Chat
               title="Gruppechat"
@@ -244,43 +259,49 @@ async function MemberView({
               initialMessages={((messages ?? []) as Message[]).reverse()}
             />
           </div>
-        </div>
-
-        <aside className="space-y-6">
-          <section className="space-y-4 rounded-3xl bg-card p-5 shadow-card">
-            <h2 className="text-xl font-semibold">Medlemmer · {members.length}</h2>
-            <OnlineNow people={people} currentUserId={userId} className="rounded-2xl bg-emerald-500/10 px-3 py-2" />
-            <ul className="space-y-3">
-              {members.map((m) => (
-                <li key={m.user_id} className="flex items-center gap-3">
-                  <PresenceAvatar userId={m.user_id} name={names[m.user_id]} src={m.profiles?.avatar_url} className="size-9" />
-                  <span className="flex-1 truncate text-sm font-medium">
-                    {names[m.user_id]}
-                    {m.user_id === userId && <span className="text-muted-foreground"> (deg)</span>}
-                  </span>
-                  {roleLabel[m.role] && <Badge variant="secondary">{roleLabel[m.role]}</Badge>}
-                  {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
-                    <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
-                  )}
-                </li>
-              ))}
-            </ul>
-            {isAdmin && <InvitePanel groupId={groupId} slug={slug} />}
-          </section>
-          <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
-          {isOwner ? (
-            <p className="px-2 text-center text-xs text-muted-foreground">
-              Du er eier av flokken. For å melde deg ut må du{" "}
-              <Link href={`/${slug}/innstillinger`} className="underline underline-offset-2 hover:text-foreground">
-                overføre eierskapet
-              </Link>{" "}
-              først.
-            </p>
-          ) : (
-            <LeaveGroupButton groupId={groupId} slug={slug} name={groupName} />
-          )}
-        </aside>
-      </div>
+        }
+        members={
+          <>
+            <section className="space-y-4 rounded-3xl bg-card p-5 shadow-card">
+              <h2 className="text-xl font-semibold">Medlemmer · {members.length}</h2>
+              <OnlineNow people={people} currentUserId={userId} className="rounded-2xl bg-emerald-500/10 px-3 py-2" />
+              <ul className="space-y-3">
+                {members.map((m) => (
+                  <li key={m.user_id} className="flex items-center gap-3">
+                    <PresenceAvatar
+                      userId={m.user_id}
+                      name={names[m.user_id]}
+                      src={m.profiles?.avatar_url}
+                      className="size-9"
+                    />
+                    <span className="flex-1 truncate text-sm font-medium">
+                      {names[m.user_id]}
+                      {m.user_id === userId && <span className="text-muted-foreground"> (deg)</span>}
+                    </span>
+                    {roleLabel[m.role] && <Badge variant="secondary">{roleLabel[m.role]}</Badge>}
+                    {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
+                      <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {canInvite && <InvitePanel groupId={groupId} slug={slug} />}
+            </section>
+            <NotifyLevelPicker groupId={groupId} slug={slug} level={me?.notify_level ?? "all"} />
+            {isOwner ? (
+              <p className="px-2 text-center text-xs text-muted-foreground">
+                Du er eier av flokken. For å melde deg ut må du{" "}
+                <Link href={`/${slug}/innstillinger`} className="underline underline-offset-2 hover:text-foreground">
+                  overføre eierskapet
+                </Link>{" "}
+                først.
+              </p>
+            ) : (
+              <LeaveGroupButton groupId={groupId} slug={slug} name={groupName} />
+            )}
+          </>
+        }
+      />
     </PresenceProvider>
   );
 }

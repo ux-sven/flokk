@@ -127,7 +127,7 @@ struct CreateGroupView: View {
         if let backdrop { row["backdrop"] = backdrop }
         do {
             let g: FlokkGroup = try await supabase.from("groups").insert(row)
-                .select("id, slug, name, description, visibility, tint, backdrop, emoji").single().decoded()
+                .select("*").single().decoded()
             dismiss()
             onCreated(g)
         } catch let e as PostgrestError where e.code == "23505" {

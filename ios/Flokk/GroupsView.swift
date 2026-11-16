@@ -65,7 +65,7 @@ struct GroupsView: View {
         do {
             let rows: [Membership] = try await supabase
                 .from("group_members")
-                .select("role, groups(id, slug, name, description, visibility, tint, backdrop, emoji)")
+                .select("role, groups(*)")
                 .eq("user_id", value: uid)
                 .order("joined_at")
                 .decoded()

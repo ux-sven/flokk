@@ -44,6 +44,7 @@ async function GroupSettingsContent({ params }: Params) {
             description: group.description ?? "",
             emoji: group.emoji ?? "",
             visibility: group.visibility,
+            membersCanInvite: group.members_can_invite ?? true,
           }}
         />
       </section>

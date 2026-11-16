@@ -17,6 +17,7 @@ struct GroupSettingsView: View {
     @State private var emoji: String
     @State private var description: String
     @State private var visibility: String
+    @State private var membersCanInvite: Bool
     @State private var newOwner: Member?
     @State private var confirmDelete = false
     @State private var deleteName = ""
@@ -36,6 +37,7 @@ struct GroupSettingsView: View {
         _emoji = State(initialValue: group.emoji ?? "")
         _description = State(initialValue: group.description ?? "")
         _visibility = State(initialValue: group.visibility)
+        _membersCanInvite = State(initialValue: group.membersCanInvite ?? true)
     }
 
     private var others: [Member] { members.filter { $0.userId != myUserId } }
@@ -55,8 +57,9 @@ struct GroupSettingsView: View {
                         Text("Kun inviterte").tag("invite_only")
                         Text("Åpen for alle").tag("open")
                     }
+                    Toggle("Alle medlemmer kan invitere", isOn: $membersCanInvite)
                 } footer: {
-                    Text("Adressen (/\(group.slug)) endres ikke, så delte lenker fortsetter å virke.")
+                    Text("Slår du av invitasjon for medlemmer, er det bare admins som kan lage invitasjonslenker. Adressen (/\(group.slug)) endres ikke.")
                 }
 
                 if isOwner {
@@ -128,10 +131,11 @@ struct GroupSettingsView: View {
                     "name": AnyJSON.string(String(clean.prefix(80))),
                     "description": .string(String(description.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))),
                     "visibility": .string(visibility),
+                    "members_can_invite": .bool(membersCanInvite),
                     "emoji": icon.isEmpty ? .null : .string(icon),
                 ])
                 .eq("id", value: group.id)
-                .select("id, slug, name, description, visibility, tint, backdrop, emoji")
+                .select("*")
                 .decoded()
             guard let g = rows.first else { error = "Bare admins kan endre flokken."; return }
             onSaved(g)

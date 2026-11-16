@@ -99,6 +99,7 @@ fun GroupScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val myRole = members.firstOrNull { it.userId == me }?.role
     val isAdmin = myRole == "owner" || myRole == "admin"
+    val canInvite = isAdmin || (myRole != null && group?.membersCanInvite == true)
 
     fun canRemove(m: Member) = m.userId != me && (myRole == "owner" || (myRole == "admin" && m.role == "member"))
 
@@ -215,11 +216,11 @@ fun GroupScreen(
                                 text = { Text("Del lenke til flokken") }, leadingIcon = { Icon(Icons.Default.Share, null) },
                                 onClick = { menuOpen = false; shareText(context, siteUrl("/${g.slug}"), "Del lenke til flokken") },
                             )
+                            if (canInvite) DropdownMenuItem(
+                                text = { Text("Inviter folk") }, leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
+                                onClick = { menuOpen = false; inviting = true },
+                            )
                             if (isAdmin) {
-                                DropdownMenuItem(
-                                    text = { Text("Inviter folk") }, leadingIcon = { Icon(Icons.Default.PersonAdd, null) },
-                                    onClick = { menuOpen = false; inviting = true },
-                                )
                                 DropdownMenuItem(
                                     text = { Text("Utseende") }, leadingIcon = { Icon(Icons.Default.Palette, null) },
                                     onClick = { menuOpen = false; editingLook = true },
@@ -325,12 +326,14 @@ fun GroupScreen(
                                 }
                             }
                         }
-                        if (isAdmin) {
+                        if (canInvite) {
                             OutlinedButton(onClick = { inviting = true }, modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Default.PersonAdd, null, Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("Inviter folk")
                             }
+                        }
+                        if (isAdmin) {
                             Text("Hold inne på et medlem for å fjerne det.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

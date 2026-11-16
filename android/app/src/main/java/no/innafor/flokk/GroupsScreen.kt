@@ -46,7 +46,8 @@ import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.launch
 
-const val GROUP_COLUMNS = "id, slug, name, description, visibility, tint, backdrop, emoji"
+/** «*» så appen virker også før nye kolonner er migrert */
+const val GROUP_COLUMNS = "*"
 
 @Composable
 fun GroupsScreen(onOpen: (FlokkGroup) -> Unit, onCreate: () -> Unit) {

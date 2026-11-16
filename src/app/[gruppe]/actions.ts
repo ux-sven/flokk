@@ -284,12 +284,13 @@ export async function updateGroup(
   const description = String(formData.get("description") ?? "").trim().slice(0, 500);
   const visibility = formData.get("visibility") === "open" ? "open" : "invite_only";
   const emoji = String(formData.get("emoji") ?? "").trim().slice(0, 8) || null;
+  const membersCanInvite = formData.get("members_can_invite") === "on";
   if (name.length < 2) return { error: "Gi flokken et navn på minst to tegn." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("groups")
-    .update({ name, description, visibility, emoji })
+    .update({ name, description, visibility, emoji, members_can_invite: membersCanInvite })
     .eq("id", groupId)
     .select("id");
   if (error) return { error: "Kunne ikke lagre endringene." };

@@ -150,6 +150,7 @@ fun GroupSettingsSheet(
     var emoji by remember { mutableStateOf(group.emoji ?: "") }
     var description by remember { mutableStateOf(group.description ?: "") }
     var visibility by remember { mutableStateOf(group.visibility) }
+    var membersCanInvite by remember { mutableStateOf(group.membersCanInvite ?: true) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var newOwner by remember { mutableStateOf<Member?>(null) }
@@ -166,6 +167,7 @@ fun GroupSettingsSheet(
                     put("name", name.trim().take(80))
                     put("description", description.trim().take(500))
                     put("visibility", visibility)
+                    put("members_can_invite", membersCanInvite)
                     val icon = emoji.trim().take(8)
                     if (icon.isEmpty()) put("emoji", JsonNull) else put("emoji", icon)
                 }) {
@@ -215,6 +217,13 @@ fun GroupSettingsSheet(
                     RadioButton(visibility == key, onClick = { visibility = key })
                     Text(label)
                 }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Alle medlemmer kan invitere")
+                    Text("Av: bare admins lager invitasjonslenker.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(membersCanInvite, { membersCanInvite = it })
             }
             Text(
                 "Adressen (/${group.slug}) endres ikke, så delte lenker fortsetter å virke.",

@@ -13,6 +13,8 @@ data class FlokkGroup(
     val tint: String? = null,
     val backdrop: String? = null,
     val emoji: String? = null,
+    /** Fra migrasjon 13; mangler før den er kjørt */
+    @SerialName("members_can_invite") val membersCanInvite: Boolean? = null,
 )
 
 @Serializable
