@@ -26,6 +26,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 
 const val CHANNEL_ID = "flokk"
 
@@ -91,6 +98,31 @@ object PushManager {
     }
 
     fun launch(block: suspend () -> Unit) = scope.launch { block() }
+
+    private val http = io.ktor.client.HttpClient(io.ktor.client.engine.okhttp.OkHttp)
+
+    /** Ber send-push sende et testvarsel til alle enhetene til innlogget bruker. */
+    suspend fun sendTest(): String {
+        val accessToken = supabase.auth.currentSessionOrNull()?.accessToken ?: return "Du må være innlogget."
+        return runCatching {
+            val res = http.post(BuildConfig.SUPABASE_URL.trimEnd('/') + "/functions/v1/send-push") {
+                header("Authorization", "Bearer $accessToken")
+                header("apikey", BuildConfig.SUPABASE_KEY)
+                contentType(ContentType.Application.Json)
+                setBody("""{"test":true}""")
+            }
+            val body = res.bodyAsText()
+            val sent = Regex("\"sent\":(\\d+)").find(body)?.groupValues?.get(1)?.toIntOrNull()
+            val androidReady = Regex("\"android\":(true|false)").find(body)?.groupValues?.get(1)
+            when {
+                !res.status.isSuccess() -> "Kunne ikke sende (${res.status.value})."
+                androidReady == null -> "Serveren kjører en eldre versjon av send-push. Deploy funksjonen på nytt."
+                androidReady == "false" -> "Push til Android er ikke satt opp på serveren (FCM_SERVICE_ACCOUNT mangler eller er ugyldig)."
+                sent == null || sent == 0 -> "Ingen enheter mottok varselet."
+                else -> "Testvarsel sendt til $sent enhet${if (sent == 1) "" else "er"}."
+            }
+        }.getOrElse { "Kunne ikke sende testvarsel." }
+    }
 }
 
 class FlokkMessagingService : FirebaseMessagingService() {

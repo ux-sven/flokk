@@ -46,6 +46,7 @@ fun ProfileScreen() {
     val scope = rememberCoroutineScope()
     val pushRegistered by PushManager.registered.collectAsState()
     val pushError by PushManager.lastError.collectAsState()
+    var testResult by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(user?.id) {
         val uid = user?.id ?: return@LaunchedEffect
@@ -97,6 +98,12 @@ fun ProfileScreen() {
                     if (pushRegistered) "Varsler er på for denne telefonen." else pushError ?: "Varsler er ikke slått på ennå.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (pushRegistered) {
+                    OutlinedButton(onClick = { scope.launch { testResult = "Sender …"; testResult = PushManager.sendTest() } }) {
+                        Text("Send testvarsel")
+                    }
+                    testResult?.let { Text(it, fontSize = 13.sp) }
+                }
             }
         }
         if (!pushRegistered) PushPrompt()

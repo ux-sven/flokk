@@ -345,6 +345,16 @@ async function handleNotification(n: NotificationRow) {
 }
 
 Deno.serve(async (req) => {
+  try {
+    return await handle(req);
+  } catch (err) {
+    // Aldri krasj funksjonen – logg og svar med feilen
+    console.error("[send-push] uventet feil", err);
+    return json({ error: "internal", message: (err as Error).message }, 500);
+  }
+});
+
+async function handle(req: Request): Promise<Response> {
   setCors(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method" }, 405);
@@ -375,8 +385,9 @@ Deno.serve(async (req) => {
       url: "/",
       tag: "test",
     });
-    return json(result);
+    // Viser hvilke kanaler som er satt opp, så feil oppsett er lett å se
+    return json({ ...result, channels: { web: vapidReady, ios: apnsReady, android: fcmReady } });
   }
 
   return json({ error: "unauthorized" }, 401);
-});
+}
