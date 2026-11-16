@@ -35,4 +35,10 @@ final class AuthModel {
         await NotificationCenterModel.shared.stop()
         try? await supabase.auth.signOut()
     }
+
+    /// Kontoen er slettet på serveren (med push-tokens); bare rydd lokalt.
+    func signOutAfterDeletion() async {
+        await NotificationCenterModel.shared.stop()
+        try? await supabase.auth.signOut(scope: .local)
+    }
 }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -24,11 +26,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
@@ -117,5 +121,68 @@ fun ProfileScreen() {
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Logg ut", color = MaterialTheme.colorScheme.error) }
+        DeleteAccountSection()
+    }
+}
+
+@Composable
+private fun DeleteAccountSection() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var confirming by remember { mutableStateOf(false) }
+    var typed by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = {
+                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(siteUrl("/personvern"))))
+            }) { Text("Personvernerklæring") }
+            TextButton(onClick = { confirming = true }) {
+                Text("Slett kontoen", color = MaterialTheme.colorScheme.error)
+            }
+            Text(
+                error ?: "Profilen, medlemskapene, stemmene og meldingene dine slettes for godt. Er du eier av en flokk med andre medlemmer, må du overføre eierskapet først.",
+                fontSize = 13.sp,
+                color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    if (confirming) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirming = false; typed = "" },
+            title = { Text("Slette kontoen?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Dette kan ikke angres. Skriv SLETT for å bekrefte.")
+                    OutlinedTextField(typed, { typed = it }, singleLine = true, placeholder = { Text("SLETT") })
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !busy && typed.trim().uppercase() == "SLETT",
+                    onClick = {
+                        busy = true
+                        scope.launch {
+                            runCatching { supabase.postgrest.rpc("delete_account") }
+                                .onSuccess {
+                                    NotificationCenter.clear()
+                                    runCatching { supabase.auth.signOut(io.github.jan.supabase.auth.SignOutScope.LOCAL) }
+                                }
+                                .onFailure { e ->
+                                    val msg = (e as? io.github.jan.supabase.postgrest.exception.PostgrestRestException)?.error
+                                    error = if (msg?.startsWith("Overfør eierskapet") == true) "$msg." else "Kunne ikke slette kontoen. Prøv igjen."
+                                }
+                            busy = false
+                            confirming = false
+                            typed = ""
+                        }
+                    },
+                ) { Text("Slett for godt", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { OutlinedButton(onClick = { confirming = false; typed = "" }) { Text("Avbryt") } },
+        )
     }
 }

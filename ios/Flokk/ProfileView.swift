@@ -1,3 +1,4 @@
+import Supabase
 import SwiftUI
 
 struct ProfileView: View {
@@ -7,6 +8,9 @@ struct ProfileView: View {
     @State private var saved = false
     @State private var error: String?
     @State private var busy = false
+    @State private var confirmDelete = false
+    @State private var deleteText = ""
+    @State private var deleteError: String?
 
     var body: some View {
         NavigationStack {
@@ -51,9 +55,43 @@ struct ProfileView: View {
                 Section {
                     Button("Logg ut", role: .destructive) { Task { await auth.signOut() } }
                 }
+                Section {
+                    Link(destination: siteURL("/personvern")) {
+                        Label("Personvernerklæring", systemImage: "hand.raised")
+                    }
+                    Button(role: .destructive) { confirmDelete = true } label: {
+                        Label("Slett kontoen", systemImage: "trash")
+                    }
+                } footer: {
+                    if let deleteError { Text(deleteError).foregroundStyle(.red) }
+                    else { Text("Profilen, medlemskapene, stemmene og meldingene dine slettes for godt. Er du eier av en flokk med andre medlemmer, må du overføre eierskapet først.") }
+                }
+            }
+            .alert("Slette kontoen?", isPresented: $confirmDelete) {
+                TextField("SLETT", text: $deleteText).textInputAutocapitalization(.characters)
+                Button("Slett for godt", role: .destructive) { Task { await deleteAccount() } }
+                Button("Avbryt", role: .cancel) { deleteText = "" }
+            } message: {
+                Text("Dette kan ikke angres. Skriv SLETT for å bekrefte.")
             }
             .navigationTitle("Min profil")
             .task { await load() }
+        }
+    }
+
+    private func deleteAccount() async {
+        defer { deleteText = "" }
+        guard deleteText.trimmingCharacters(in: .whitespaces).uppercased() == "SLETT" else {
+            deleteError = "Du må skrive SLETT for å slette kontoen."
+            return
+        }
+        do {
+            try await supabase.rpc("delete_account").execute()
+            await auth.signOutAfterDeletion()
+        } catch let e as PostgrestError where e.message.hasPrefix("Overfør eierskapet") {
+            deleteError = e.message + "."
+        } catch {
+            deleteError = "Kunne ikke slette kontoen. Prøv igjen."
         }
     }
 

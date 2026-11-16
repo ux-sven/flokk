@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KeyRound } from "lucide-react";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import Loading from "@/app/loading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { groupSurface } from "@/lib/tints";
 import { cn } from "@/lib/utils";
+import { DeleteAccount } from "./delete-account";
 import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "Min profil" };
@@ -40,6 +41,12 @@ async function AccountContent() {
   ]);
   const name = profile?.display_name || "";
   const groups = ((memberships ?? []) as unknown as MyGroup[]).filter((m) => m.groups);
+  const owned = groups.filter((m) => m.role === "owner").map((m) => m.groups!.id);
+  const { data: others } = owned.length
+    ? await supabase.from("group_members").select("group_id").in("group_id", owned).neq("user_id", user.id)
+    : { data: [] };
+  const withOthers = new Set((others ?? []).map((r) => r.group_id as string));
+  const ownedWithOthers = groups.filter((m) => m.role === "owner" && withOthers.has(m.groups!.id)).map((m) => m.groups!.name);
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-8">
@@ -85,6 +92,14 @@ async function AccountContent() {
           </ul>
         )}
       </section>
+
+      <DeleteAccount ownedWithOthers={ownedWithOthers} />
+
+      <p className="text-center text-sm text-muted-foreground">
+        <Link href="/personvern" className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+          <ShieldCheck className="size-4" /> Personvernerklæring
+        </Link>
+      </p>
     </main>
   );
 }

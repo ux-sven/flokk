@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient, requireUser } from "@/lib/supabase/server";
 
 export type ProfileState = { error?: string; saved?: boolean };
@@ -21,4 +22,18 @@ export async function updateDisplayName(_prev: ProfileState, formData: FormData)
 
   revalidatePath("/", "layout");
   return { saved: true };
+}
+
+export async function deleteAccount() {
+  await requireUser("/konto");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_account");
+  if (error) {
+    if (error.message.startsWith("Overfør eierskapet")) return { error: `${error.message}.` };
+    return { error: "Kunne ikke slette kontoen. Prøv igjen, eller ta kontakt." };
+  }
+  // Brukeren finnes ikke lenger; fjern økten i nettleseren
+  await supabase.auth.signOut({ scope: "local" });
+  revalidatePath("/", "layout");
+  redirect("/?konto=slettet");
 }

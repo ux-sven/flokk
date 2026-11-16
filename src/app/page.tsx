@@ -21,18 +21,18 @@ type DashboardEvent = {
   chosen: { starts_at: string } | null;
 };
 
-export default function Home() {
+export default function Home(props: PageProps<"/">) {
   return (
     <Suspense fallback={<Loading />}>
-      <HomeContent />
+      <HomeContent {...props} />
     </Suspense>
   );
 }
 
-async function HomeContent() {
+async function HomeContent({ searchParams }: PageProps<"/">) {
   if (!isSupabaseConfigured) return <SetupNotice />;
   const user = await getUser();
-  if (!user) return <Landing />;
+  if (!user) return <Landing deleted={(await searchParams).konto === "slettet"} />;
   return <Dashboard userId={user.id} />;
 }
 
@@ -147,7 +147,7 @@ function EventGrid({ events }: { events: DashboardEvent[] }) {
   );
 }
 
-function Landing() {
+function Landing({ deleted = false }: { deleted?: boolean }) {
   const features = [
     { icon: Users, title: "Egne grupper", text: "Åpne for alle eller kun for inviterte – med egen, delbar adresse." },
     { icon: CalendarCheck, title: "Stem på tidspunkt", text: "Foreslå tider, la flokken stemme, og velg det som passer flest." },
@@ -156,6 +156,11 @@ function Landing() {
   ];
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-16">
+      {deleted && (
+        <p role="status" className="mb-10 rounded-2xl bg-card px-5 py-4 text-sm shadow-card">
+          Kontoen din er slettet. Takk for at du brukte Flokk.
+        </p>
+      )}
       <div className="max-w-2xl space-y-6">
         <h1 className="text-5xl font-extrabold tracking-tight">Samle flokken.</h1>
         <p className="text-lg text-muted-foreground">

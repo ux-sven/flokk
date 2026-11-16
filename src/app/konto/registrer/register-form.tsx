@@ -51,6 +51,13 @@ export function RegisterForm({ next }: { next: string }) {
       <Button type="submit" className="h-10 w-full" disabled={pending}>
         {pending ? "Oppretter …" : "Opprett bruker"}
       </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        Les om hva vi lagrer i{" "}
+        <Link href="/personvern" className="underline underline-offset-2 hover:text-foreground">
+          personvernerklæringen
+        </Link>
+        .
+      </p>
       <p className="text-center text-sm text-muted-foreground">
         Har du allerede en bruker?{" "}
         <Link href={loginHref} className="font-medium text-foreground hover:underline">
