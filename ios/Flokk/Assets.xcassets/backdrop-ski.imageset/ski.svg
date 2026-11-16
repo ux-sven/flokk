@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1124" height="136" viewBox="0 0 1124 136">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f7f9fb"/><stop offset="1" stop-color="#ecf2f6"/></linearGradient>
+<linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0.38" stop-color="#fff" stop-opacity="0"/><stop offset="0.62" stop-color="#fff" stop-opacity="1"/></linearGradient>
+<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1124" height="136"><rect width="1124" height="136" fill="url(#fade)"/></mask>
+</defs>
+<rect width="1124" height="136" fill="url(#bg)"/>
+<g mask="url(#m)">
+<polygon points="520.0,136.0 590.7,25.3 661.4,64.2 708.2,50.0 754.9,62.0 811.1,27.2 867.3,65.5 936.9,41.8 1006.6,60.4 1074.4,37.6 1142.3,63.5 1124.0,136.0" fill="#dfe8ee"/>
+<polygon points="520.0,136.0 585.7,58.2 651.4,77.4 722.6,56.0 793.8,74.4 859.7,38.7 925.6,80.0 964.7,40.0 1003.9,74.3 1059.0,61.2 1114.0,81.6 1177.6,55.3 1241.2,72.6 1124.0,136.0" fill="#d3e0e8"/>
+<path d="M500,136 L500,104 Q800,80 1124,96 L1124,136Z" fill="#fbfcfd"/>
+<path d="M560,132.0 C700,120 820,96 1124,104" fill="none" stroke="#bfd0dc" stroke-width="1.6"/>
+<path d="M560,136.5 C700,129 820,105 1124,113" fill="none" stroke="#bfd0dc" stroke-width="1.6"/>
+<line x1="640" y1="121.0" x2="646" y2="127.0" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="698" y1="118.4" x2="704" y2="124.4" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="756" y1="115.8" x2="762" y2="121.8" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="814" y1="113.2" x2="820" y2="119.2" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="872" y1="110.6" x2="878" y2="116.6" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="930" y1="108.0" x2="936" y2="114.0" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="988" y1="105.4" x2="994" y2="111.4" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="1046" y1="102.8" x2="1052" y2="108.8" stroke="#ccdae4" stroke-width="1.5" stroke-linecap="round"/>
+<polygon points="900,62 891,86 909,86" fill="#b9ccc4"/><polygon points="900,52 893,72 907,72" fill="#b9ccc4"/>
+<polygon points="940,62 931,86 949,86" fill="#b9ccc4"/><polygon points="940,52 933,72 947,72" fill="#b9ccc4"/>
+<polygon points="1060,62 1051,86 1069,86" fill="#b9ccc4"/><polygon points="1060,52 1053,72 1067,72" fill="#b9ccc4"/>
+</g>
+</svg>

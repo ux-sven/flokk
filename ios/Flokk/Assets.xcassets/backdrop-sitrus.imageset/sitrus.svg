@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1124" height="136" viewBox="0 0 1124 136">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fdfbf5"/><stop offset="1" stop-color="#faf4e6"/></linearGradient>
+<linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0.38" stop-color="#fff" stop-opacity="0"/><stop offset="0.62" stop-color="#fff" stop-opacity="1"/></linearGradient>
+<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1124" height="136"><rect width="1124" height="136" fill="url(#fade)"/></mask>
+</defs>
+<rect width="1124" height="136" fill="url(#bg)"/>
+<g mask="url(#m)">
+<circle cx="640" cy="96" r="30" fill="#f2d58b"/><circle cx="640" cy="96" r="26" fill="#fffaf0"/>
+<path d="M640,96 L660.0,107.4 A23,23 0 0 1 649.1,117.1Z" fill="#f8e8b9"/>
+<path d="M640,96 L646.1,118.2 A23,23 0 0 1 631.5,117.4Z" fill="#f8e8b9"/>
+<path d="M640,96 L628.6,116.0 A23,23 0 0 1 618.9,105.1Z" fill="#f8e8b9"/>
+<path d="M640,96 L617.8,102.1 A23,23 0 0 1 618.6,87.5Z" fill="#f8e8b9"/>
+<path d="M640,96 L620.0,84.6 A23,23 0 0 1 630.9,74.9Z" fill="#f8e8b9"/>
+<path d="M640,96 L633.9,73.8 A23,23 0 0 1 648.5,74.6Z" fill="#f8e8b9"/>
+<path d="M640,96 L651.4,76.0 A23,23 0 0 1 661.1,86.9Z" fill="#f8e8b9"/>
+<path d="M640,96 L662.2,89.9 A23,23 0 0 1 661.4,104.5Z" fill="#f8e8b9"/>
+<circle cx="760" cy="40" r="26" fill="#f0b98c"/><circle cx="760" cy="40" r="22" fill="#fffaf0"/>
+<path d="M760,40 L777.5,47.5 A19,19 0 0 1 769.4,56.5Z" fill="#f7d8bd"/>
+<path d="M760,40 L767.0,57.7 A19,19 0 0 1 755.0,58.3Z" fill="#f7d8bd"/>
+<path d="M760,40 L752.5,57.5 A19,19 0 0 1 743.5,49.4Z" fill="#f7d8bd"/>
+<path d="M760,40 L742.3,47.0 A19,19 0 0 1 741.7,35.0Z" fill="#f7d8bd"/>
+<path d="M760,40 L742.5,32.5 A19,19 0 0 1 750.6,23.5Z" fill="#f7d8bd"/>
+<path d="M760,40 L753.0,22.3 A19,19 0 0 1 765.0,21.7Z" fill="#f7d8bd"/>
+<path d="M760,40 L767.5,22.5 A19,19 0 0 1 776.5,30.6Z" fill="#f7d8bd"/>
+<path d="M760,40 L777.7,33.0 A19,19 0 0 1 778.3,45.0Z" fill="#f7d8bd"/>
+<circle cx="880" cy="92" r="36" fill="#cfe09a"/><circle cx="880" cy="92" r="32" fill="#fffaf0"/>
+<path d="M880,92 L905.1,106.5 A29,29 0 0 1 891.3,118.7Z" fill="#e3edc0"/>
+<path d="M880,92 L887.5,120.0 A29,29 0 0 1 869.1,118.9Z" fill="#e3edc0"/>
+<path d="M880,92 L865.5,117.1 A29,29 0 0 1 853.3,103.3Z" fill="#e3edc0"/>
+<path d="M880,92 L852.0,99.5 A29,29 0 0 1 853.1,81.1Z" fill="#e3edc0"/>
+<path d="M880,92 L854.9,77.5 A29,29 0 0 1 868.7,65.3Z" fill="#e3edc0"/>
+<path d="M880,92 L872.5,64.0 A29,29 0 0 1 890.9,65.1Z" fill="#e3edc0"/>
+<path d="M880,92 L894.5,66.9 A29,29 0 0 1 906.7,80.7Z" fill="#e3edc0"/>
+<path d="M880,92 L908.0,84.5 A29,29 0 0 1 906.9,102.9Z" fill="#e3edc0"/>
+<circle cx="1010" cy="44" r="30" fill="#f2d58b"/><circle cx="1010" cy="44" r="26" fill="#fffaf0"/>
+<path d="M1010,44 L1032.4,49.3 A23,23 0 0 1 1024.7,61.7Z" fill="#f8e8b9"/>
+<path d="M1010,44 L1022.1,63.6 A23,23 0 0 1 1007.9,66.9Z" fill="#f8e8b9"/>
+<path d="M1010,44 L1004.7,66.4 A23,23 0 0 1 992.3,58.7Z" fill="#f8e8b9"/>
+<path d="M1010,44 L990.4,56.1 A23,23 0 0 1 987.1,41.9Z" fill="#f8e8b9"/>
+<path d="M1010,44 L987.6,38.7 A23,23 0 0 1 995.3,26.3Z" fill="#f8e8b9"/>
+<path d="M1010,44 L997.9,24.4 A23,23 0 0 1 1012.1,21.1Z" fill="#f8e8b9"/>
+<path d="M1010,44 L1015.3,21.6 A23,23 0 0 1 1027.7,29.3Z" fill="#f8e8b9"/>
+<path d="M1010,44 L1029.6,31.9 A23,23 0 0 1 1032.9,46.1Z" fill="#f8e8b9"/>
+<circle cx="1100" cy="110" r="26" fill="#f0b98c"/><circle cx="1100" cy="110" r="22" fill="#fffaf0"/>
+<path d="M1100,110 L1114.4,122.4 A19,19 0 0 1 1104.1,128.6Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1101.5,128.9 A19,19 0 0 1 1089.8,126.0Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1087.6,124.4 A19,19 0 0 1 1081.4,114.1Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1081.1,111.5 A19,19 0 0 1 1084.0,99.8Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1085.6,97.6 A19,19 0 0 1 1095.9,91.4Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1098.5,91.1 A19,19 0 0 1 1110.2,94.0Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1112.4,95.6 A19,19 0 0 1 1118.6,105.9Z" fill="#f7d8bd"/>
+<path d="M1100,110 L1118.9,108.5 A19,19 0 0 1 1116.0,120.2Z" fill="#f7d8bd"/>
+<g transform="translate(820.0,120.0) rotate(60.0)" opacity="1"><path d="M0,-11 C7.15,-4.95 6.6,5.5 0,11 C-6.6,5.5 -7.15,-4.95 0,-11Z" fill="#bcd3a3"/></g>
+<g transform="translate(950.0,20.0) rotate(-40.0)" opacity="1"><path d="M0,-10 C6.5,-4.5 6.0,5.0 0,10 C-6.0,5.0 -6.5,-4.5 0,-10Z" fill="#bcd3a3"/></g>
+</g>
+</svg>
