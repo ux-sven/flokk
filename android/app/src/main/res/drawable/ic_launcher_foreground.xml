@@ -1,7 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generert av scripts/generate-icons.mjs -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#26292E" android:pathData="M42,46m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
-    <path android:fillColor="#26292E" android:pathData="M66,46m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
-    <path android:fillColor="#26292E" android:pathData="M54,66m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path android:fillColor="#F8F8F8" android:pathData="M41.13,34.8h21.8a0.7,0.7 0,0 1,0.7,0.7v6.19a0.7,0.7 0,0 1,-0.7,0.7h-21.8a0.7,0.7 0,0 1,-0.7,-0.7v-6.19a0.7,0.7 0,0 1,0.7,-0.7z" />
+    <path android:fillColor="#F8F8F8" android:pathData="M41.13,34.8h6.97a0.7,0.7 0,0 1,0.7,0.7v31.37a0.7,0.7 0,0 1,-0.7,0.7h-6.97a0.7,0.7 0,0 1,-0.7,-0.7v-31.37a0.7,0.7 0,0 1,0.7,-0.7z" />
+    <path android:fillColor="#F8F8F8" android:pathData="M41.13,48.019999999999996h16.6a0.7,0.7 0,0 1,0.7,0.7v5.77a0.7,0.7 0,0 1,-0.7,0.7h-16.6a0.7,0.7 0,0 1,-0.7,-0.7v-5.77a0.7,0.7 0,0 1,0.7,-0.7z" />
+    <path android:fillColor="#BEEA56" android:pathData="M60.19,63.42a4.22,4.22 0,1 0,8.44,0a4.22,4.22 0,1 0,-8.44,0z" />
 </vector>

@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test \"src/**/*.test.ts\"",
     "check:supabase": "node --env-file-if-exists=.env.local scripts/check-supabase.mjs",
-    "vapid": "node scripts/generate-vapid.mjs"
+    "vapid": "node scripts/generate-vapid.mjs",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

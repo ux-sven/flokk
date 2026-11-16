@@ -34,5 +34,5 @@ Push-varsler krever migrasjon 11 og en APNs-nøkkel – se [docs/push-varsler.md
 
 - Universal Links (at vanlige https-lenker åpner appen) – krever Team ID og en
   `apple-app-site-association`-fil på nettsiden
-- App-ikon og App Store-oppføring
+- App Store-oppføring (app-ikonet lages med `npm run icons`)
 - Profilbilde
