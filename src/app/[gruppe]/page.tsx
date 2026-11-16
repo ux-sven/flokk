@@ -17,6 +17,7 @@ import { LeaveGroupButton } from "@/components/leave-group-button";
 import { RemoveMemberButton } from "@/components/remove-member-button";
 import { loadGroup, loadMembers } from "@/lib/groups";
 import { splitEvents } from "@/lib/events";
+import { EventWhen } from "@/components/event-when";
 import { formatDateTime } from "@/lib/format";
 import { asBackdrop, asTint, eventSurface, groupSurface } from "@/lib/tints";
 import type { NotifyLevel } from "@/lib/notifications";
@@ -102,6 +103,7 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
           supabase={supabase}
           groupId={group.id}
           groupName={group.name}
+          look={{ tint: group.tint, backdrop: group.backdrop }}
           slug={group.slug}
           userId={user.id}
           isAdmin={isAdmin}
@@ -119,6 +121,7 @@ async function MemberView({
   supabase,
   groupId,
   groupName,
+  look,
   slug,
   userId,
   isAdmin,
@@ -128,6 +131,7 @@ async function MemberView({
   supabase: Awaited<ReturnType<typeof loadGroup>>["supabase"];
   groupId: string;
   groupName: string;
+  look: { tint: string | null; backdrop: string | null };
   slug: string;
   userId: string;
   isAdmin: boolean;
@@ -197,8 +201,8 @@ async function MemberView({
               </div>
             ) : (
               <>
-                {!!upcoming.length && <EventGroup title="Kommende" events={upcoming} slug={slug} />}
-                {!!voting.length && <EventGroup title="Stemming pågår" events={voting} slug={slug} />}
+                {!!upcoming.length && <EventGroup title="Kommende" events={upcoming} slug={slug} group={look} />}
+                {!!voting.length && <EventGroup title="Stemming pågår" events={voting} slug={slug} group={look} />}
               </>
             )}
             {!!past.length && (
@@ -316,7 +320,17 @@ type GroupEvent = {
   event_time_options: { count: number }[];
 };
 
-function EventGroup({ title, events, slug }: { title: string; events: GroupEvent[]; slug: string }) {
+function EventGroup({
+  title,
+  events,
+  slug,
+  group,
+}: {
+  title: string;
+  events: GroupEvent[];
+  slug: string;
+  group: { tint?: string | null; backdrop?: string | null };
+}) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
@@ -329,13 +343,9 @@ function EventGroup({ title, events, slug }: { title: string; events: GroupEvent
             href={`/${slug}/arrangement/${e.id}`}
             className="overflow-hidden rounded-3xl bg-card shadow-card transition-shadow hover:shadow-card-hover"
           >
-            {asBackdrop(e.backdrop) && <div className={cn("h-16", eventSurface(e, null))} />}
+            <div className={cn("h-16", eventSurface(e, group))} />
             <div className="space-y-1 p-5">
-              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                {e.chosen?.starts_at
-                  ? formatDateTime(e.chosen.starts_at)
-                  : `Stemming pågår · ${e.event_time_options?.[0]?.count ?? 0} forslag`}
-              </p>
+              <EventWhen startsAt={e.chosen?.starts_at} suggestions={e.event_time_options?.[0]?.count ?? 0} />
               <p className="font-semibold">{e.title}</p>
               {e.location && <p className="text-xs text-muted-foreground">{e.location}</p>}
             </div>

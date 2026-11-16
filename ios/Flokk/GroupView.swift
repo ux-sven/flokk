@@ -53,8 +53,8 @@ struct GroupView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .card()
                     }
-                    EventSectionList(title: "Kommende", events: sections.upcoming)
-                    EventSectionList(title: "Stemming pågår", events: sections.voting)
+                    EventSectionList(title: "Kommende", events: sections.upcoming, groupTint: tint, groupBackdrop: backdrop)
+                    EventSectionList(title: "Stemming pågår", events: sections.voting, groupTint: tint, groupBackdrop: backdrop)
                     if !sections.past.isEmpty {
                         DisclosureGroup {
                             VStack(spacing: 0) {
@@ -331,6 +331,8 @@ struct GroupView: View {
 struct EventSectionList: View {
     let title: String
     let events: [EventSummary]
+    var groupTint: String?
+    var groupBackdrop: String?
 
     var body: some View {
         if !events.isEmpty {
@@ -339,7 +341,10 @@ struct EventSectionList: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
             ForEach(events) { e in
-                NavigationLink(value: Route.event(e.id)) { EventCard(event: e) }.buttonStyle(.plain)
+                NavigationLink(value: Route.event(e.id)) {
+                    EventCard(event: e, groupTint: groupTint, groupBackdrop: groupBackdrop)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -347,16 +352,28 @@ struct EventSectionList: View {
 
 struct EventCard: View {
     let event: EventSummary
+    var groupTint: String?
+    var groupBackdrop: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let b = event.backdrop, knownBackdrops.contains(b) {
-                Color.clear.frame(height: 64).overlay { Surface(backdrop: b, tint: nil) }.clipped()
-            }
+            // Samme stripe på alle kort: arrangementets bakgrunn, ellers flokkens
+            let own = event.backdrop.flatMap { knownBackdrops.contains($0) ? $0 : nil }
+            Color.clear.frame(height: 64)
+                .overlay { Surface(backdrop: own ?? groupBackdrop, tint: own == nil ? groupTint : nil) }
+                .clipped()
             VStack(alignment: .leading, spacing: 4) {
-                Text(event.chosen.map { Fmt.dateTime($0.startsAt) } ?? "Stemming pågår")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.green)
+                Group {
+                    if let c = event.chosen {
+                        Label(Fmt.dateTime(c.startsAt), systemImage: "calendar")
+                            .foregroundStyle(.primary)
+                    } else {
+                        Label("Stemming pågår", systemImage: "hand.raised")
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .labelStyle(.titleAndIcon)
                 Text(event.title).font(.headline)
                 if let l = event.location { Text(l).font(.caption).foregroundStyle(.secondary) }
             }

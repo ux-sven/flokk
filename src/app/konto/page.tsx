@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import Loading from "@/app/loading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -61,9 +61,16 @@ async function AccountContent() {
           </div>
         </div>
         <ProfileForm name={name} />
-        <Link href="/konto/nytt-passord" className={buttonVariants({ variant: "outline" })}>
-          <KeyRound /> Bytt passord
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/konto/nytt-passord" className={buttonVariants({ variant: "outline" })}>
+            <KeyRound /> Bytt passord
+          </Link>
+          <form action="/auth/logout" method="post">
+            <button type="submit" className={buttonVariants({ variant: "ghost" })}>
+              <LogOut /> Logg ut
+            </button>
+          </form>
+        </div>
       </section>
 
       <section className="space-y-4 rounded-3xl bg-card p-6 shadow-card sm:p-8">

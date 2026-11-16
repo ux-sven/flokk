@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import Loading from "@/app/loading";
 import Link from "next/link";
-import { CalendarCheck, ListChecks, MessagesSquare, Users } from "lucide-react";
+import { CalendarCheck, Link2, ListChecks, MessagesSquare, Plus, Users } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { splitEvents } from "@/lib/events";
-import { formatDateTime } from "@/lib/format";
+import { EventWhen } from "@/components/event-when";
 import { eventSurface, groupSurface, tintBg } from "@/lib/tints";
 import type { Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,9 @@ async function Dashboard({ userId }: { userId: string }) {
       .order("joined_at", { ascending: false }),
     supabase
       .from("events")
-      .select("id, title, status, location, backdrop, created_at, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)")
+      .select(
+        "id, title, status, location, backdrop, created_at, groups(slug, name, tint, backdrop), chosen:event_time_options!events_chosen_option_fk(starts_at)",
+      )
       .neq("status", "cancelled")
       .is("archived_at", null)
       .order("created_at", { ascending: false })
@@ -63,13 +65,36 @@ async function Dashboard({ userId }: { userId: string }) {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Mine flokker</h1>
-          <Link href="/grupper/ny" className={buttonVariants({ variant: "outline", size: "lg" })}>
-            Opprett flokk
-          </Link>
+          {groups.length > 0 && (
+            <Link href="/grupper/ny" className={buttonVariants({ variant: "outline", size: "lg" })}>
+              Opprett flokk
+            </Link>
+          )}
         </div>
         {groups.length === 0 ? (
-          <div className="rounded-3xl bg-card p-8 text-muted-foreground shadow-card">
-            Du er ikke med i noen flokk ennå. Opprett en, eller åpne en invitasjonslenke du har fått.
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className={cn("space-y-4 rounded-3xl p-6 shadow-card sm:p-8", tintBg.lime)}>
+              <Users className="size-7" />
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold">Start en flokk</h2>
+                <p className="text-sm opacity-80">
+                  Gi den et navn, inviter folk med en lenke, og foreslå tidspunkter for det første treffet.
+                </p>
+              </div>
+              <Link href="/grupper/ny" className={buttonVariants({ size: "lg", className: "h-11 px-5" })}>
+                <Plus /> Opprett flokk
+              </Link>
+            </div>
+            <div className="space-y-4 rounded-3xl bg-card p-6 shadow-card sm:p-8">
+              <Link2 className="size-7 text-muted-foreground" />
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold">Har du fått en invitasjon?</h2>
+                <p className="text-sm text-muted-foreground">
+                  Åpne lenken du har fått på e-post eller melding, så blir du med i flokken. Åpne flokker kan du også
+                  bli med i direkte fra adressen deres.
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -92,21 +117,23 @@ async function Dashboard({ userId }: { userId: string }) {
         )}
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-2xl font-bold tracking-tight">Kommende arrangementer</h2>
-        {!upcoming.length ? (
-          <p className="text-muted-foreground">
-            {voting.length ? "Ingen arrangementer har fått tidspunkt ennå." : "Ingen kommende arrangementer."}
-          </p>
-        ) : (
-          <EventGrid events={upcoming.slice(0, 9)} />
-        )}
-        {upcoming.length > 9 && (
-          <p className="text-sm text-muted-foreground">
-            Og {upcoming.length - 9} til – se flokkene for alle arrangementer.
-          </p>
-        )}
-      </section>
+      {groups.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">Kommende arrangementer</h2>
+          {!upcoming.length ? (
+            <p className="text-muted-foreground">
+              {voting.length ? "Ingen arrangementer har fått tidspunkt ennå." : "Ingen kommende arrangementer."}
+            </p>
+          ) : (
+            <EventGrid events={upcoming.slice(0, 9)} />
+          )}
+          {upcoming.length > 9 && (
+            <p className="text-sm text-muted-foreground">
+              Og {upcoming.length - 9} til – se flokkene for alle arrangementer.
+            </p>
+          )}
+        </section>
+      )}
 
       {!!voting.length && (
         <section className="space-y-4">
@@ -132,9 +159,7 @@ function EventGrid({ events }: { events: DashboardEvent[] }) {
         >
           <div className={cn("h-24", eventSurface(e, e.groups))} />
           <div className="space-y-1 p-5">
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-              {e.chosen?.starts_at ? formatDateTime(e.chosen.starts_at) : "Stemming pågår"}
-            </p>
+            <EventWhen startsAt={e.chosen?.starts_at} />
             <p className="font-semibold">{e.title}</p>
             <p className="text-xs text-muted-foreground">
               {e.groups?.name}
@@ -150,7 +175,11 @@ function EventGrid({ events }: { events: DashboardEvent[] }) {
 function Landing({ deleted = false }: { deleted?: boolean }) {
   const features = [
     { icon: Users, title: "Egne grupper", text: "Åpne for alle eller kun for inviterte – med egen, delbar adresse." },
-    { icon: CalendarCheck, title: "Stem på tidspunkt", text: "Foreslå tider, la flokken stemme, og velg det som passer flest." },
+    {
+      icon: CalendarCheck,
+      title: "Stem på tidspunkt",
+      text: "Foreslå tider, la flokken stemme, og velg det som passer flest.",
+    },
     { icon: ListChecks, title: "Fordel oppgaver", text: "Hvem tar med hva? Oppgaver knyttet til hvert arrangement." },
     { icon: MessagesSquare, title: "Snakk sammen", text: "Chat for hele gruppen, eller bare for ett arrangement." },
   ];
@@ -192,8 +221,8 @@ function SetupNotice() {
       <div className="space-y-3 rounded-3xl bg-card p-8 shadow-card">
         <h1 className="text-2xl font-bold">Supabase er ikke koblet til ennå</h1>
         <p className="text-muted-foreground">
-          Kopier <code>.env.example</code> til <code>.env.local</code> og fyll inn URL og publishable key
-          fra Supabase-prosjektet. Kjør deretter migrasjonen i <code>supabase/migrations</code>.
+          Kopier <code>.env.example</code> til <code>.env.local</code> og fyll inn URL og publishable key fra
+          Supabase-prosjektet. Kjør deretter migrasjonen i <code>supabase/migrations</code>.
         </p>
       </div>
     </main>

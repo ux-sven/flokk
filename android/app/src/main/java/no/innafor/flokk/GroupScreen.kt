@@ -4,6 +4,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.HowToVote
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -287,7 +289,7 @@ fun GroupScreen(
             listOf("Kommende" to sections.upcoming, "Stemming pågår" to sections.voting).forEach { (title, list) ->
                 if (list.isNotEmpty()) {
                     item(key = "section-$title") { SectionLabel("$title · ${list.size}") }
-                    items(list, key = { it.id }) { e -> EventCard(e) { onEvent(e.id) } }
+                    items(list, key = { it.id }) { e -> EventCard(e, g) { onEvent(e.id) } }
                 }
             }
             if (sections.past.isNotEmpty()) {
@@ -440,17 +442,23 @@ private fun PastEvents(events: List<EventSummary>, onEvent: (String) -> Unit) {
 }
 
 @Composable
-private fun EventCard(e: EventSummary, onClick: () -> Unit) {
+private fun EventCard(e: EventSummary, group: FlokkGroup?, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).clickable(onClick = onClick)) {
         Column {
-            if (e.backdrop != null && e.backdrop in backdropDrawables) {
-                SurfaceBox(e.backdrop, null, Modifier.fillMaxWidth().height(64.dp)) {}
-            }
+            // Samme stripe på alle kort: arrangementets bakgrunn, ellers flokkens
+            val own = e.backdrop?.takeIf { it in backdropDrawables }
+            SurfaceBox(own ?: group?.backdrop, if (own == null) group?.tint else null, Modifier.fillMaxWidth().height(64.dp)) {}
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    e.chosen?.let { Fmt.dateTime(it.startsAt) } ?: "Stemming pågår",
-                    color = Green, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val chosen = e.chosen
+                    val color = if (chosen != null) MaterialTheme.colorScheme.onSurface else Color(0xFFB45309)
+                    Icon(if (chosen != null) Icons.Default.Event else Icons.Default.HowToVote, null, Modifier.size(14.dp), tint = color)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        chosen?.let { Fmt.dateTime(it.startsAt) } ?: "Stemming pågår",
+                        color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    )
+                }
                 Text(e.title, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
                 e.location?.let { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }

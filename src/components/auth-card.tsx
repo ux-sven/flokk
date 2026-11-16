@@ -1,13 +1,8 @@
-import Link from "next/link";
-
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <main className="flex flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-3xl bg-card p-8 shadow-card">
-        <Link href="/" className="text-lg font-extrabold tracking-tight">
-          FLOKK.
-        </Link>
-        <div className="mt-6 mb-5 space-y-1">
+        <div className="mb-5 space-y-1">
           <h1 className="text-2xl font-bold">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>

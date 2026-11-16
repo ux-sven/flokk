@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import { MemberAvatar } from "@/components/member-avatar";
+import { LoginLink } from "@/components/login-link";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { NOTIFICATION_LIMIT, NOTIFICATION_SELECT, type AppNotification } from "@/lib/notifications";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -49,22 +50,20 @@ async function UserActions() {
           {user ? (
             <>
               <NotificationBell userId={user.id} initial={notifications} />
-              <Link href="/grupper/ny" className={buttonVariants({ size: "lg" })}>
-                <Plus /> Ny flokk
+              <Link href="/grupper/ny" className={buttonVariants({ size: "lg" })} aria-label="Ny flokk">
+                <Plus /> <span className="max-sm:hidden">Ny flokk</span>
               </Link>
               <Link href="/konto" aria-label="Min profil" title="Min profil" className="rounded-full ring-offset-2 ring-offset-background transition-shadow hover:ring-2 hover:ring-ring/50">
                 <MemberAvatar name={profile?.display_name || "?"} src={profile?.avatar_url} className="size-9" />
               </Link>
-              <form action="/auth/logout" method="post">
+              <form action="/auth/logout" method="post" className="max-sm:hidden">
                 <button type="submit" className={buttonVariants({ variant: "ghost", size: "lg" })}>
                   Logg ut
                 </button>
               </form>
             </>
           ) : (
-            <Link href="/login" className={buttonVariants({ size: "lg" })}>
-              Logg inn
-            </Link>
+            <LoginLink />
           )}
     </>
   );

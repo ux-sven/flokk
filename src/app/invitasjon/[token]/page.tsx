@@ -42,7 +42,12 @@ async function InvitationPageContent({ params, searchParams }: PageProps<"/invit
         {!invite || !invite.valid ? (
           <>
             <h1 className="text-2xl font-bold">Invitasjonen er ugyldig</h1>
-            <p className="text-muted-foreground">Lenken er utløpt eller finnes ikke. Be om en ny invitasjon.</p>
+            <p className="text-muted-foreground">
+              Lenken er utløpt eller finnes ikke. Invitasjoner varer i 14 dager – be den som inviterte deg om en ny.
+            </p>
+            <Link href="/" className={buttonVariants({ size: "lg", className: "h-11 w-full" })}>
+              {user ? "Til flokkene mine" : "Til forsiden"}
+            </Link>
           </>
         ) : (
           <>
