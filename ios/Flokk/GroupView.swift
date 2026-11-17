@@ -18,6 +18,7 @@ struct GroupView: View {
     @State private var look: (tint: String?, backdrop: String?)?
     @State private var error: String?
     @State private var plan: GroupPlan?
+    @State private var upgrading = false
     @Environment(Router.self) private var router
 
     init(group: FlokkGroup) { _group = State(initialValue: group) }
@@ -51,6 +52,7 @@ struct GroupView: View {
                         Text("Gratisversjonen har ett kommende arrangement om gangen. Når dette er gjennomført, kan dere lage et nytt – eller eieren kan oppgradere til Flokk Pluss.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        upgradeButton
                     }
                     let sections = EventSections(events)
                     if sections.upcoming.isEmpty && sections.voting.isEmpty {
@@ -114,6 +116,7 @@ struct GroupView: View {
                         Text("Flokken er full. Nye medlemmer kan ikke bli med før eieren oppgraderer til Flokk Pluss.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        upgradeButton
                     }
                     ForEach(members) { m in
                         HStack(spacing: 12) {
@@ -191,6 +194,8 @@ struct GroupView: View {
         }
         .refreshable { await load() }
         .task { await load() }
+        .onChange(of: PlusStore.shared.version) { Task { await load() } }
+        .sheet(isPresented: $upgrading) { PlusView() }
         .task(id: scenePhase) {
             guard let uid = auth.userId else { return }
             if scenePhase == .active { await presence.start(groupId: group.id, userId: uid) } else { await presence.stop() }
@@ -317,6 +322,14 @@ struct GroupView: View {
             .eq("group_id", value: group.id).eq("user_id", value: m.userId).select("user_id").decoded()
         if rows?.isEmpty ?? true { error = "Du har ikke lov til å fjerne dette medlemmet." }
         await load()
+    }
+
+    /// Bare eieren kan oppgradere (Pluss følger eieren av flokken).
+    @ViewBuilder private var upgradeButton: some View {
+        if myRole == "owner" && PlusStore.shared.isEnabled {
+            Button { upgrading = true } label: { Label("Oppgrader til Flokk Pluss", systemImage: "sparkles") }
+                .font(.subheadline.weight(.semibold))
+        }
     }
 
     private func roleLabel(_ r: String) -> String? {

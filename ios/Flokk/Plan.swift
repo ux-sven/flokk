@@ -1,5 +1,6 @@
 import Foundation
 import Supabase
+import StoreKit
 import SwiftUI
 
 // Flokk Pluss: gratisgrenser og status. Grensene håndheves i databasen
@@ -8,6 +9,7 @@ import SwiftUI
 /// Din plan, fra rpc("my_plan").
 nonisolated struct MyPlan: Decodable, Sendable {
     let plus: Bool
+    let source: String?
     let expiresAt: String?
     let ownedGroups: Int
     let maxGroups: Int
@@ -34,11 +36,16 @@ func planLimitMessage(_ error: Error) -> String? {
 /// Planen din på profilsiden.
 struct PlanSection: View {
     let plan: MyPlan
+    @State private var upgrading = false
+    @State private var managing = false
 
     var body: some View {
         Section {
             if plan.plus {
                 Label("Flokk Pluss", systemImage: "sparkles").foregroundStyle(.tint)
+                if plan.source == "app_store" {
+                    Button("Administrer abonnement") { managing = true }
+                }
             } else {
                 LabeledContent("Gratisversjonen", value: "\(plan.ownedGroups) av \(plan.maxGroups) flokker")
                 VStack(alignment: .leading, spacing: 4) {
@@ -48,13 +55,22 @@ struct PlanSection: View {
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                if PlusStore.shared.isEnabled {
+                    Button { upgrading = true } label: {
+                        Label("Oppgrader til Flokk Pluss", systemImage: "sparkles")
+                    }
+                }
             }
         } header: {
             Text("Abonnement")
         } footer: {
             Text(plan.plus
                 ? "Ingen grenser på flokker, medlemmer eller arrangementer i flokkene du eier."
-                : "Med Flokk Pluss forsvinner grensene for alle flokkene du eier. Kommer snart.")
+                : PlusStore.shared.isEnabled
+                    ? "Med Flokk Pluss forsvinner grensene for alle flokkene du eier."
+                    : "Med Flokk Pluss forsvinner grensene for alle flokkene du eier. Kommer snart.")
         }
+        .sheet(isPresented: $upgrading) { PlusView() }
+        .manageSubscriptionsSheet(isPresented: $managing)
     }
 }

@@ -16,6 +16,10 @@ final class AuthModel {
         for await (_, session) in supabase.auth.authStateChanges {
             // Utløpt lokal økt regnes som utlogget til den er fornyet
             if let session, !session.isExpired {
+                if userId != session.user.id {
+                    let id = session.user.id
+                    Task { await PlusStore.shared.logIn(id) }
+                }
                 userId = session.user.id
                 email = session.user.email
             } else if session == nil {
@@ -33,12 +37,14 @@ final class AuthModel {
     func signOut() async {
         await PushManager.shared.unregister()
         await NotificationCenterModel.shared.stop()
+        await PlusStore.shared.logOut()
         try? await supabase.auth.signOut()
     }
 
     /// Kontoen er slettet på serveren (med push-tokens); bare rydd lokalt.
     func signOutAfterDeletion() async {
         await NotificationCenterModel.shared.stop()
+        await PlusStore.shared.logOut()
         try? await supabase.auth.signOut(scope: .local)
     }
 }

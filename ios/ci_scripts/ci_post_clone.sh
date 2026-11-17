@@ -1,7 +1,8 @@
 #!/bin/sh
 # Xcode Cloud: lager Flokk/Secrets.swift fra miljøvariabler i workflowen,
 # siden filen ikke ligger i git. Sett disse i App Store Connect → Xcode Cloud →
-# workflow → Environment: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SITE_URL.
+# workflow → Environment: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SITE_URL og
+# (valgfritt) REVENUECAT_IOS_KEY – uten den er kjøp av Flokk Pluss slått av.
 set -e
 : "${SUPABASE_URL:?Mangler SUPABASE_URL i Xcode Cloud-workflowen}"
 : "${SUPABASE_PUBLISHABLE_KEY:?Mangler SUPABASE_PUBLISHABLE_KEY i Xcode Cloud-workflowen}"
@@ -12,6 +13,7 @@ enum Secrets {
     static let supabaseURL = "$SUPABASE_URL"
     static let supabaseKey = "$SUPABASE_PUBLISHABLE_KEY"
     static let siteURL = "$SITE_URL"
+    static let revenueCatKey = "${REVENUECAT_IOS_KEY:-}"
 }
 SWIFT
 echo "Skrev ios/Flokk/Secrets.swift"

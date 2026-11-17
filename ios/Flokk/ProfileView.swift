@@ -88,7 +88,7 @@ struct ProfileView: View {
                 Text("Dette kan ikke angres. Skriv SLETT for å bekrefte.")
             }
             .navigationTitle("Min profil")
-            .task { await load() }
+            .task(id: PlusStore.shared.version) { await load() }
         }
     }
 
