@@ -1,7 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generert av scripts/generate-icons.mjs -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="24dp" android:height="24dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M8.5,9.5m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M15.5,9.5m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M12,16m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0" />
+    <path android:pathData="M1.46,12a10.54,10.54 0,1 0,21.08,0a10.54,10.54 0,1 0,-21.08,0z" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.67" />
+    <path android:pathData="M2.04,9.97a6.63,6.63 0,1 0,13.26,0a6.63,6.63 0,1 0,-13.26,0z" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.67" />
+    <path android:pathData="M6.94,11.26a3.84,3.84 0,1 0,7.68,0a3.84,3.84 0,1 0,-7.68,0z" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.67" />
 </vector>

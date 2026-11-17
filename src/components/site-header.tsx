@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
 import { MemberAvatar } from "@/components/member-avatar";
 import { LoginLink } from "@/components/login-link";
+import { Logo } from "@/components/logo";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { NOTIFICATION_LIMIT, NOTIFICATION_SELECT, type AppNotification } from "@/lib/notifications";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -14,8 +15,8 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
-        <Link href="/" className="text-lg font-extrabold tracking-tight">
-          FLOKK.
+        <Link href="/" aria-label="Flokk – til forsiden" className="rounded-md">
+          <Logo className="h-10" />
         </Link>
         <div className="ml-auto flex items-center gap-2">
           <Suspense fallback={<div className="h-9 w-24 animate-pulse rounded-lg bg-muted" />}>

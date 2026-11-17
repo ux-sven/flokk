@@ -194,7 +194,7 @@ struct PushPrompt: View {
                 Text("Varsler om nye arrangementer, tidspunkt som blir valgt og nye meldinger i flokkene dine.")
                     .font(.subheadline).foregroundStyle(.secondary)
                 Button("Slå på varsler") { Task { await push.requestPermission() } }
-                    .buttonStyle(.borderedProminent)
+                    .prominentButton()
             }
         }
         .padding(.vertical, 6)

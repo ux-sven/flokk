@@ -42,7 +42,7 @@ struct GroupView: View {
                         Text("Arrangementer").font(.title2.bold())
                         Spacer()
                         Button { creatingEvent = true } label: { Label("Nytt", systemImage: "calendar.badge.plus") }
-                            .buttonStyle(.borderedProminent)
+                            .prominentButton()
                             .buttonBorderShape(.capsule)
                     }
                     let sections = EventSections(events)

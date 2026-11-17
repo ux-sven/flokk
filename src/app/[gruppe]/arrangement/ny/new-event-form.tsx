@@ -98,7 +98,7 @@ export function NewEventForm({
           <Plus /> Legg til tidspunkt
         </Button>
         <label className="flex cursor-pointer items-start gap-3 rounded-2xl border bg-card p-4">
-          <input type="checkbox" name="allow_time_suggestions" defaultChecked className="mt-1 size-4 accent-emerald-600" />
+          <input type="checkbox" name="allow_time_suggestions" defaultChecked className="mt-1 size-4 accent-gold-deep" />
           <span>
             <span className="block text-sm font-medium">La medlemmene foreslå flere tidspunkt</span>
             <span className="text-xs text-muted-foreground">Du kan slå dette av senere. Forslag stenges når du velger tidspunkt.</span>

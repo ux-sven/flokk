@@ -33,7 +33,7 @@ struct InvitationView: View {
                         Button { Task { await accept() } } label: {
                             Text(busy ? "Blir med …" : "Bli med i flokken").frame(maxWidth: .infinity).padding(.vertical, 6)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .prominentButton()
                         .buttonBorderShape(.capsule)
                         .disabled(busy)
                     } else {

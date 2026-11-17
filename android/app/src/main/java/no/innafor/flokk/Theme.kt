@@ -28,21 +28,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 
+// Grafitt og gull fra logoens palett (samme som webappen)
 private val Light = lightColorScheme(
-    primary = Color(0xFF26292E),
-    onPrimary = Color.White,
-    background = Color(0xFFF3F4F7),
+    primary = Color(0xFF292929),
+    onPrimary = Color(0xFFF6F5F2),
+    background = Color(0xFFF6F5F2),
     surface = Color.White,
-    surfaceVariant = Color(0xFFEDEEF2),
-    secondaryContainer = Color(0xFFA3E4D1),
+    surfaceVariant = Color(0xFFEDEBE6),
+    secondaryContainer = Color(0xFFF1E8CF),
+    onSecondaryContainer = Color(0xFF5E4A1C),
+    tertiary = Color(0xFF8A6D2A),
+    outlineVariant = Color(0xFFE3E0D8),
 )
 private val Dark = darkColorScheme(
-    primary = Color(0xFFF2F2F5),
-    onPrimary = Color(0xFF15171B),
-    background = Color(0xFF15171B),
-    surface = Color(0xFF1F2227),
-    surfaceVariant = Color(0xFF2A2D33),
-    secondaryContainer = Color(0xFF1D5246),
+    primary = Color(0xFFC7AE6A),
+    onPrimary = Color(0xFF0F0F0F),
+    background = Color(0xFF0F0F0F),
+    surface = Color(0xFF1D1D1D),
+    surfaceVariant = Color(0xFF292929),
+    secondaryContainer = Color(0xFF3A3322),
+    onSecondaryContainer = Color(0xFFD5C28F),
+    tertiary = Color(0xFFD5C28F),
+    outlineVariant = Color(0xFF333333),
 )
 
 @Composable

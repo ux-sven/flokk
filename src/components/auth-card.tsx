@@ -23,7 +23,7 @@ export function FormError({ message }: { message?: string }) {
 
 export function FormSuccess({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div role="status" className="space-y-1 rounded-2xl bg-tint-mint p-4">
+    <div role="status" className="space-y-1 rounded-2xl bg-accent p-4 text-accent-foreground">
       <p className="font-semibold">{title}</p>
       <p className="text-sm opacity-80">{children}</p>
     </div>

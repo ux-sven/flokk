@@ -9,7 +9,7 @@ export function SuggestionsToggle({ slug, eventId, allowed }: { slug: string; ev
     <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
       <input
         type="checkbox"
-        className="size-4 accent-emerald-600"
+        className="size-4 accent-gold-deep"
         checked={allowed}
         disabled={pending}
         onChange={(e) => startTransition(() => setAllowTimeSuggestions(slug, eventId, e.target.checked))}

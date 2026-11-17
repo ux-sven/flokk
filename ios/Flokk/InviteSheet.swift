@@ -25,7 +25,7 @@ struct InviteSheet: View {
                         ShareLink(item: url, message: Text("Bli med i \(group.name) på Flokk")) {
                             Label("Del", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .prominentButton()
                         Button {
                             UIPasteboard.general.url = url
                             copied = true

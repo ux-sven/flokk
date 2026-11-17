@@ -10,8 +10,12 @@ struct LoginView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("FLOKK.").font(.system(.largeTitle, weight: .heavy))
+                VStack(alignment: .leading, spacing: 14) {
+                    Image("Logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 64)
+                        .accessibilityLabel("Flokk")
                     Text("Velkommen tilbake til flokken.").foregroundStyle(.secondary)
                 }
                 VStack(spacing: 12) {
@@ -37,7 +41,7 @@ struct LoginView: View {
                 } label: {
                     Text(busy ? "Logger inn …" : "Logg inn").frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.borderedProminent)
+                .prominentButton()
                 .buttonBorderShape(.capsule)
                 .disabled(busy || email.isEmpty || password.isEmpty)
 

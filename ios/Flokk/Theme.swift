@@ -57,6 +57,12 @@ struct CardStyle: ViewModifier {
 
 extension View {
     func card() -> some View { modifier(CardStyle()) }
+
+    /// Fylt knapp i aksentfargen (grafitt i lys modus, gull i mørk) med lesbar tekst på begge.
+    /// Bruk denne i stedet for .borderedProminent, som alltid gir hvit tekst.
+    func prominentButton() -> some View {
+        buttonStyle(.borderedProminent).foregroundStyle(Color("OnAccent"))
+    }
 }
 
 struct AvatarView: View {

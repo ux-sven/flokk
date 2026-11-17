@@ -7,7 +7,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { splitEvents } from "@/lib/events";
 import { EventWhen } from "@/components/event-when";
-import { eventSurface, groupSurface, tintBg } from "@/lib/tints";
+import { eventSurface, groupSurface } from "@/lib/tints";
+import { LogoMark } from "@/components/logo";
 import type { Group } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -73,15 +74,15 @@ async function Dashboard({ userId }: { userId: string }) {
         </div>
         {groups.length === 0 ? (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className={cn("space-y-4 rounded-3xl p-6 shadow-card sm:p-8", tintBg.lime)}>
-              <Users className="size-7" />
+            <div className="brand-panel space-y-4 rounded-3xl p-6 shadow-card sm:p-8">
+              <LogoMark className="size-10" />
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold">Start en flokk</h2>
                 <p className="text-sm opacity-80">
                   Gi den et navn, inviter folk med en lenke, og foreslå tidspunkter for det første treffet.
                 </p>
               </div>
-              <Link href="/grupper/ny" className={buttonVariants({ size: "lg", className: "h-11 px-5" })}>
+              <Link href="/grupper/ny" className={buttonVariants({ variant: "gold", size: "lg", className: "h-11 px-5" })}>
                 <Plus /> Opprett flokk
               </Link>
             </div>
@@ -190,24 +191,26 @@ function Landing({ deleted = false }: { deleted?: boolean }) {
           Kontoen din er slettet. Takk for at du brukte Flokk.
         </p>
       )}
-      <div className="max-w-2xl space-y-6">
-        <h1 className="text-5xl font-extrabold tracking-tight">Samle flokken.</h1>
-        <p className="text-lg text-muted-foreground">
-          Opprett en gruppe, inviter folk, og planlegg treff der alle får si sitt om når det passer.
-        </p>
-        <Link href="/login" className={buttonVariants({ size: "lg", className: "h-11 px-5" })}>
-          Kom i gang
-        </Link>
+      <div className="brand-panel relative overflow-hidden rounded-[2rem] px-6 py-12 shadow-card sm:px-12 sm:py-16">
+        <LogoMark className="pointer-events-none absolute -right-16 -bottom-20 size-80 opacity-25 sm:-right-10 sm:size-[26rem] sm:opacity-40" />
+        <div className="relative max-w-xl space-y-6">
+          <h1 className="text-5xl font-extrabold tracking-tight">Samle flokken.</h1>
+          <p className="text-lg text-[#f2efe8]/75">
+            Opprett en gruppe, inviter folk, og planlegg treff der alle får si sitt om når det passer.
+          </p>
+          <Link href="/login" className={buttonVariants({ variant: "gold", size: "lg", className: "h-11 px-5" })}>
+            Kom i gang
+          </Link>
+        </div>
       </div>
       <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {features.map(({ icon: Icon, title, text }, i) => (
-          <div
-            key={title}
-            className={cn("rounded-3xl p-6 shadow-card", tintBg[(["lime", "mint", "sky", "lilac"] as const)[i]])}
-          >
-            <Icon className="size-6" />
+        {features.map(({ icon: Icon, title, text }) => (
+          <div key={title} className="rounded-3xl bg-card p-6 shadow-card">
+            <span className="grid size-11 place-items-center rounded-2xl bg-accent text-gold-text">
+              <Icon className="size-5" />
+            </span>
             <h2 className="mt-4 font-semibold">{title}</h2>
-            <p className="mt-1 text-sm opacity-80">{text}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{text}</p>
           </div>
         ))}
       </div>

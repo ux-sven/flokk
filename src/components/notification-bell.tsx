@@ -89,7 +89,7 @@ export function NotificationBell({ userId, initial }: { userId: string; initial:
       >
         <Bell />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[11px] font-bold text-white">
+          <span className="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-gold-deep px-1 text-[11px] font-bold text-[#0f0f0f]">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -124,7 +124,7 @@ export function NotificationBell({ userId, initial }: { userId: string; initial:
                         onClick={() => openNotification(n)}
                         className={cn(
                           "flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-muted",
-                          !n.read_at && "bg-emerald-50/60 dark:bg-emerald-950/30",
+                          !n.read_at && "bg-accent/60",
                         )}
                       >
                         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-muted">
@@ -136,7 +136,7 @@ export function NotificationBell({ userId, initial }: { userId: string; initial:
                             {n.group?.name} · {formatRelative(n.updated_at)}
                           </span>
                         </span>
-                        {!n.read_at && <span className="mt-2 size-2 shrink-0 rounded-full bg-emerald-600" />}
+                        {!n.read_at && <span className="mt-2 size-2 shrink-0 rounded-full bg-gold-deep" />}
                       </button>
                     </li>
                   );

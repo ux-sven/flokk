@@ -76,7 +76,7 @@ export function GroupSettingsForm({
           type="checkbox"
           name="members_can_invite"
           defaultChecked={initial.membersCanInvite}
-          className="mt-1 size-4 accent-emerald-600"
+          className="mt-1 size-4 accent-gold-deep"
         />
         <span>
           <span className="block font-medium">Alle medlemmer kan invitere</span>
@@ -128,7 +128,7 @@ export function RoleList({ groupId, slug, members }: { groupId: string; slug: st
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="size-4 accent-emerald-600"
+                className="size-4 accent-gold-deep"
                 checked={p.role === "admin"}
                 disabled={pending}
                 onChange={() => toggle(p)}
