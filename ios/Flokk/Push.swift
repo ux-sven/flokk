@@ -134,12 +134,18 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     /// Trykk på varselet åpner riktig flokk, arrangement eller chat.
+    /// NB: Bruk varianten med completion handler, ikke `async`. Med `async` kalles
+    /// svaret til iOS fra en bakgrunnstråd, og UIKit avbryter appen
+    /// («Call must be made on main thread» i _performBlockAfterCATransactionCommitSynchronizes).
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        guard let target = PushTarget(userInfo: response.notification.request.content.userInfo) else { return }
-        await MainActor.run { Router.shared.open(target) }
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let target = PushTarget(userInfo: response.notification.request.content.userInfo) {
+            Task { @MainActor in Router.shared.open(target) }
+        }
+        completionHandler()
     }
 }
 
