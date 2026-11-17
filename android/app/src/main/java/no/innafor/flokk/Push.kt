@@ -113,13 +113,17 @@ object PushManager {
             }
             val body = res.bodyAsText()
             val sent = Regex("\"sent\":(\\d+)").find(body)?.groupValues?.get(1)?.toIntOrNull()
+            val devices = Regex("\"devices\":(\\d+)").find(body)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            val failures = Regex("\"failures\":\\[(.*?)]").find(body)?.groupValues?.get(1)
+                ?.split("\",\"")?.map { it.trim('"') }?.filter { it.isNotBlank() }.orEmpty()
             val androidReady = Regex("\"android\":(true|false)").find(body)?.groupValues?.get(1)
             when {
                 !res.status.isSuccess() -> "Kunne ikke sende (${res.status.value})."
                 androidReady == null -> "Serveren kjører en eldre versjon av send-push. Deploy funksjonen på nytt."
                 androidReady == "false" -> "Push til Android er ikke satt opp på serveren (FCM_SERVICE_ACCOUNT mangler eller er ugyldig)."
-                sent == null || sent == 0 -> "Ingen enheter mottok varselet."
-                else -> "Testvarsel sendt til $sent enhet${if (sent == 1) "" else "er"}."
+                devices == 0 -> "Ingen enheter er registrert for varsler."
+                else -> "Testvarsel sendt til ${sent ?: 0} av $devices enhet${if (devices == 1) "" else "er"}." +
+                    if (failures.isEmpty()) "" else " Feil: ${failures.joinToString("; ")}"
             }
         }.getOrElse { "Kunne ikke sende testvarsel." }
     }

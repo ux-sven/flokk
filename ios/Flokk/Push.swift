@@ -73,6 +73,31 @@ final class PushManager {
         _ = try? await supabase.from("device_tokens").delete().eq("token", value: token).execute()
     }
 
+    /// Ber send-push sende et testvarsel til alle enhetene dine og forteller hva som skjedde.
+    func sendTest() async -> String {
+        do {
+            let r: PushTestResult = try await supabase.functions.invoke(
+                "send-push",
+                options: FunctionInvokeOptions(body: ["test": true])
+            )
+            guard let channels = r.channels else {
+                return "Serveren kjører en eldre versjon av send-push. Deploy funksjonen på nytt."
+            }
+            if channels.ios != true {
+                return "Push til iOS er ikke satt opp på serveren. Sjekk APNS_-hemmelighetene og deploy send-push på nytt."
+            }
+            let sent = r.sent ?? 0
+            let devices = r.devices ?? 0
+            var text = devices == 0
+                ? "Ingen enheter er registrert for varsler."
+                : "Testvarsel sendt til \(sent) av \(devices) enhet\(devices == 1 ? "" : "er")."
+            if let f = r.failures, !f.isEmpty { text += " Feil: " + f.joined(separator: "; ") }
+            return text
+        } catch {
+            return "Kunne ikke sende testvarsel."
+        }
+    }
+
     func setBadge(_ count: Int) {
         UNUserNotificationCenter.current().setBadgeCount(count)
     }
@@ -136,4 +161,12 @@ nonisolated struct PushTarget: Equatable, Sendable {
         eventId = (userInfo["event_id"] as? String).flatMap(UUID.init(uuidString:))
         isMessage = (userInfo["kind"] as? String) == "message"
     }
+}
+
+nonisolated struct PushTestResult: Decodable {
+    struct Channels: Decodable { let web: Bool?; let ios: Bool?; let android: Bool? }
+    let sent: Int?
+    let devices: Int?
+    let channels: Channels?
+    let failures: [String]?
 }

@@ -8,6 +8,8 @@ struct ProfileView: View {
     @State private var saved = false
     @State private var error: String?
     @State private var busy = false
+    @State private var testResult: String?
+    @State private var testing = false
     @State private var confirmDelete = false
     @State private var deleteText = ""
     @State private var deleteError: String?
@@ -41,6 +43,14 @@ struct ProfileView: View {
                     case .authorized, .provisional, .ephemeral:
                         if push.registered {
                             Label("Varsler er på for denne telefonen", systemImage: "bell.badge.fill")
+                            Button(testing ? "Sender …" : "Send testvarsel") {
+                                Task {
+                                    testing = true
+                                    testResult = await push.sendTest()
+                                    testing = false
+                                }
+                            }
+                            .disabled(testing)
                         } else {
                             Label("Varsler er tillatt, men telefonen er ikke registrert ennå", systemImage: "bell.slash")
                         }
@@ -50,7 +60,8 @@ struct ProfileView: View {
                 } header: {
                     Text("Varsler")
                 } footer: {
-                    if let e = push.lastError { Text(e) }
+                    if let testResult { Text(testResult) }
+                    else if let e = push.lastError { Text(e) }
                 }
                 Section {
                     Button("Logg ut", role: .destructive) { Task { await auth.signOut() } }

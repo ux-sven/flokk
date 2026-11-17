@@ -57,7 +57,9 @@ async function apnsAuthToken(): Promise<string> {
 }
 
 /** Returnerer «gone» når Apple sier tokenet ikke lenger er gyldig. */
-async function sendApns(token: string, environment: string, payload: PushPayload): Promise<"ok" | "gone" | "error"> {
+type SendResult = { result: "ok" | "gone" | "error"; reason?: string };
+
+async function sendApns(token: string, environment: string, payload: PushPayload): Promise<SendResult> {
   const host = environment === "sandbox" ? "api.sandbox.push.apple.com" : "api.push.apple.com";
   const res = await fetch(`https://${host}/3/device/${token}`, {
     method: "POST",
@@ -82,13 +84,14 @@ async function sendApns(token: string, environment: string, payload: PushPayload
       kind: payload.kind,
     }),
   });
-  if (res.ok) return "ok";
+  if (res.ok) return { result: "ok" };
   const reason = ((await res.json().catch(() => ({}))) as { reason?: string }).reason;
+  const detail = `${environment} ${res.status} ${reason ?? ""}`.trim();
   if (res.status === 410 || reason === "BadDeviceToken" || reason === "Unregistered" || reason === "DeviceTokenNotForTopic") {
-    return "gone";
+    return { result: "gone", reason: detail };
   }
-  console.error("[send-push] APNs", res.status, reason);
-  return "error";
+  console.error("[send-push] APNs", detail);
+  return { result: "error", reason: detail };
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +146,7 @@ async function fcmAccessToken(): Promise<string> {
  * Sender en ren data-melding; appen viser selv varselet slik at et trykk kan
  * åpne riktig skjerm. Returnerer «gone» når tokenet ikke lenger er gyldig.
  */
-async function sendFcm(token: string, payload: PushPayload): Promise<"ok" | "gone" | "error"> {
+async function sendFcm(token: string, payload: PushPayload): Promise<SendResult> {
   const data: Record<string, string> = { title: payload.title, body: payload.body, url: payload.url };
   if (payload.tag) data.tag = payload.tag;
   if (payload.groupId) data.group_id = payload.groupId;
@@ -162,14 +165,17 @@ async function sendFcm(token: string, payload: PushPayload): Promise<"ok" | "gon
       },
     }),
   });
-  if (res.ok) return "ok";
+  if (res.ok) return { result: "ok" };
   const err = ((await res.json().catch(() => ({}))) as {
     error?: { status?: string; details?: { errorCode?: string }[] };
   }).error;
   const code = err?.details?.find((d) => d.errorCode)?.errorCode ?? err?.status;
-  if (res.status === 404 || code === "UNREGISTERED" || (code === "INVALID_ARGUMENT" && res.status === 400)) return "gone";
-  console.error("[send-push] FCM", res.status, code);
-  return "error";
+  const detail = `${res.status} ${code ?? ""}`.trim();
+  if (res.status === 404 || code === "UNREGISTERED" || (code === "INVALID_ARGUMENT" && res.status === 400)) {
+    return { result: "gone", reason: detail };
+  }
+  console.error("[send-push] FCM", detail);
+  return { result: "error", reason: detail };
 }
 
 const admin = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
@@ -274,18 +280,22 @@ async function sendToUser(userId: string, payload: PushPayload) {
   ]);
 
   let sent = 0;
+  // Hvorfor enheter ikke fikk varselet – vises i svaret på testvarsel
+  const failures: string[] = [];
   const native = Promise.all(
     (devices ?? []).map(async (d) => {
       try {
-        const result =
+        const { result, reason } =
           d.platform === "android" ? await sendFcm(d.token, payload) : await sendApns(d.token, d.environment, payload);
         if (result === "ok") {
           sent++;
           await admin.from("device_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", d.id);
-        } else if (result === "gone") {
-          await admin.from("device_tokens").delete().eq("id", d.id);
+        } else {
+          failures.push(`${d.platform}: ${reason ?? result}${result === "gone" ? " (fjernet)" : ""}`);
+          if (result === "gone") await admin.from("device_tokens").delete().eq("id", d.id);
         }
       } catch (err) {
+        failures.push(`${d.platform}: ${(err as Error).message}`);
         console.error(`[send-push] ${d.platform}`, (err as Error).message);
       }
     }),
@@ -302,6 +312,7 @@ async function sendToUser(userId: string, payload: PushPayload) {
         await admin.from("push_subscriptions").update({ last_used_at: new Date().toISOString() }).eq("id", s.id);
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
+        failures.push(`web: ${status ?? (err as Error).message}${status === 404 || status === 410 ? " (fjernet)" : ""}`);
         if (status === 404 || status === 410) {
           // Abonnementet er utløpt eller trukket tilbake
           await admin.from("push_subscriptions").delete().eq("id", s.id);
@@ -312,7 +323,7 @@ async function sendToUser(userId: string, payload: PushPayload) {
     }),
   );
   await Promise.all([native, web]);
-  return { sent, devices: (subs?.length ?? 0) + (devices?.length ?? 0) };
+  return { sent, devices: (subs?.length ?? 0) + (devices?.length ?? 0), failures };
 }
 
 async function handleNotification(n: NotificationRow) {
