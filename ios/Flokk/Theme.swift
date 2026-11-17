@@ -10,16 +10,16 @@ extension Color {
     }
 }
 
-/// Samme pastellfarger som webappen (konvertert fra OKLCH).
+/// Samme dempede pastellfarger som webappen (konvertert fra OKLCH).
 enum Tint {
     static func color(_ name: String?) -> Color {
         switch name {
-        case "lime": Color(light: (0.843, 0.962, 0.641), dark: (0.263, 0.331, 0.124))
-        case "sky": Color(light: (0.685, 0.86, 0.967), dark: (0.139, 0.301, 0.39))
-        case "lilac": Color(light: (0.822, 0.713, 0.955), dark: (0.321, 0.234, 0.416))
-        case "mauve": Color(light: (0.778, 0.767, 0.879), dark: (0.279, 0.267, 0.361))
-        case "peach": Color(light: (1, 0.813, 0.687), dark: (0.402, 0.267, 0.173))
-        default: Color(light: (0.641, 0.894, 0.822), dark: (0.115, 0.322, 0.274))
+        case "lime": Color(light: (0.859, 0.873, 0.726), dark: (0.241, 0.248, 0.151))
+        case "sky": Color(light: (0.761, 0.847, 0.900), dark: (0.173, 0.239, 0.285))
+        case "lilac": Color(light: (0.827, 0.792, 0.903), dark: (0.240, 0.214, 0.291))
+        case "mauve": Color(light: (0.876, 0.791, 0.844), dark: (0.270, 0.208, 0.248))
+        case "peach": Color(light: (0.936, 0.840, 0.735), dark: (0.308, 0.233, 0.161))
+        default: Color(light: (0.759, 0.869, 0.816), dark: (0.171, 0.250, 0.214))
         }
     }
 }

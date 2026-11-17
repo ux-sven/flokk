@@ -57,17 +57,17 @@ fun FlokkTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) Dark else Light, content = content)
 }
 
-/** Samme pastellfarger som webappen (konvertert fra OKLCH). */
+/** Samme dempede pastellfarger som webappen (konvertert fra OKLCH). */
 @Composable
 fun tintColor(name: String?): Color {
     val dark = isSystemInDarkTheme()
     return when (name) {
-        "lime" -> if (dark) Color(0xFF43541F) else Color(0xFFD7F5A3)
-        "sky" -> if (dark) Color(0xFF234D63) else Color(0xFFAFDBF6)
-        "lilac" -> if (dark) Color(0xFF523C6A) else Color(0xFFD2B6F4)
-        "mauve" -> if (dark) Color(0xFF47445C) else Color(0xFFC6C4E0)
-        "peach" -> if (dark) Color(0xFF66442C) else Color(0xFFFFCFAF)
-        else -> if (dark) Color(0xFF1D5246) else Color(0xFFA3E4D1)
+        "lime" -> if (dark) Color(0xFF3D3F26) else Color(0xFFDBDFB9)
+        "sky" -> if (dark) Color(0xFF2C3D49) else Color(0xFFC2D8E5)
+        "lilac" -> if (dark) Color(0xFF3D364A) else Color(0xFFD3CAE6)
+        "mauve" -> if (dark) Color(0xFF45353F) else Color(0xFFDFCAD7)
+        "peach" -> if (dark) Color(0xFF4F3B29) else Color(0xFFEFD6BB)
+        else -> if (dark) Color(0xFF2C4037) else Color(0xFFC2DED0)
     }
 }
 

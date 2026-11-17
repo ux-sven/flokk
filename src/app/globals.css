@@ -98,13 +98,13 @@
   --logo-gold-2: #c9ad5c;
   --logo-gold-3: #a6853f;
   --logo-gold-4: #85612f;
-  /* Pastellflater for grupper og kategorier */
-  --tint-lime: oklch(0.93 0.11 125);
-  --tint-mint: oklch(0.87 0.07 175);
-  --tint-sky: oklch(0.87 0.06 235);
-  --tint-lilac: oklch(0.82 0.09 305);
-  --tint-mauve: oklch(0.83 0.04 290);
-  --tint-peach: oklch(0.89 0.07 55);
+  /* Dempede pastellflater for grupper og kategorier (lav metning, så de står til grafitt og gull) */
+  --tint-lime: oklch(0.89 0.05 112);
+  --tint-mint: oklch(0.875 0.035 165);
+  --tint-sky: oklch(0.87 0.03 235);
+  --tint-lilac: oklch(0.855 0.04 300);
+  --tint-mauve: oklch(0.86 0.03 340);
+  --tint-peach: oklch(0.89 0.045 70);
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1c1c;
   --sidebar-primary: #292929;
@@ -152,12 +152,12 @@
     --logo-gold-2: initial;
     --logo-gold-3: initial;
     --logo-gold-4: initial;
-    --tint-lime: oklch(0.42 0.08 125);
-    --tint-mint: oklch(0.4 0.06 175);
-    --tint-sky: oklch(0.4 0.06 235);
-    --tint-lilac: oklch(0.4 0.08 305);
-    --tint-mauve: oklch(0.4 0.04 290);
-    --tint-peach: oklch(0.42 0.06 55);
+    --tint-lime: oklch(0.36 0.04 112);
+    --tint-mint: oklch(0.35 0.03 165);
+    --tint-sky: oklch(0.35 0.03 240);
+    --tint-lilac: oklch(0.35 0.035 300);
+    --tint-mauve: oklch(0.35 0.028 340);
+    --tint-peach: oklch(0.37 0.04 65);
     --sidebar: #1d1d1d;
     --sidebar-foreground: #f2efe8;
     --sidebar-primary: #c7ae6a;
