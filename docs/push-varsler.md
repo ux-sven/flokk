@@ -68,7 +68,7 @@ Edge Functions → **Secrets** → legg til:
 
 ### 5. Database Webhook
 
-Database → **Webhooks** → (slå på webhooks hvis du blir spurt) → **Create a new hook**:
+**Integrations** → **Database Webhooks** → (slå på webhooks hvis du blir spurt) → **Create a new hook**:
 
 - **Name:** `push_notifications`
 - **Table:** `notifications`
@@ -87,7 +87,7 @@ For ekte varsler trenger du en bruker til: du får ikke varsel om dine egne hand
 
 ## Feilsøking
 
-- **Ingenting kommer:** Edge Functions → send-push → **Logs**. Database → Webhooks → push_notifications viser svarkoder.
+- **Ingenting kommer:** Edge Functions → send-push → **Logs**. Integrations → Database Webhooks → push_notifications viser svarkoder, og `select * from net._http_response order by created desc limit 10;` i SQL Editor viser svarene fra send-push.
 - **«Kunne ikke slå på varsler»:** sjekk at `NEXT_PUBLIC_VAPID_PUBLIC_KEY` er satt og at dev-serveren er startet på nytt.
 - **Varsler er blokkert:** brukeren må tillate varsler for nettstedet i nettleser- eller telefoninnstillingene.
 - **iPhone viser ikke knappen:** Flokk er åpnet i Safari, ikke fra Hjem-skjermen.

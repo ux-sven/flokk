@@ -143,7 +143,7 @@ if (fn.status === 401 && fn.body?.error === "unauthorized") ok("Edge Function se
 else if (fn.status === 401) bad("send-push avviser kall før funksjonen kjører", "Slå av «Verify JWT» for funksjonen");
 else if (fn.status === 404) bad("Edge Function send-push er ikke deployet", "Se docs/push-varsler.md, steg 3");
 else bad(`Uventet svar fra send-push (${fn.status})`, JSON.stringify(fn.body));
-warn("Sjekk manuelt: Database → Webhooks → push_notifications (INSERT+UPDATE på notifications, header x-flokk-secret)");
+warn("Sjekk manuelt: Integrations → Database Webhooks → push_notifications (INSERT+UPDATE på notifications, header x-flokk-secret)");
 
 console.log("\nAuth");
 const auth = await call("/auth/v1/settings");
