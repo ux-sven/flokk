@@ -105,7 +105,10 @@ Kjør `supabase/migrations/20261116100000_device_tokens.sql` i SQL Editor.
 ### 2. Nøkkel fra Apple (krever Apple Developer Program)
 
 1. [developer.apple.com](https://developer.apple.com/account) → **Certificates, Identifiers & Profiles** → **Keys** → **+**
-2. Gi nøkkelen et navn (f.eks. «Flokk push»), kryss av for **Apple Push Notifications service (APNs)** → Continue → Register
+2. Gi nøkkelen et navn (f.eks. «Flokk push»), kryss av for **Apple Push Notifications service (APNs)**,
+   trykk **Configure** og velg miljø **Sandbox & Production** → Save → Continue → Register.
+   Velger du bare ett miljø, svarer Apple `403 BadEnvironmentKeyInToken` for det andre:
+   Xcode-bygg bruker *sandbox*, TestFlight og App Store bruker *production*.
 3. Last ned `.p8`-filen (kan bare lastes ned én gang!) og noter **Key ID**
 4. **Team ID** står øverst til høyre under **Membership details**
 5. Under **Identifiers** må App ID-en `no.innafor.flokk` ha **Push Notifications** slått på
