@@ -147,7 +147,7 @@ struct CreateEventView: View {
             dismiss()
             onCreated(created.id)
         } catch {
-            self.error = "Kunne ikke opprette arrangementet."
+            self.error = planLimitMessage(error) ?? "Kunne ikke opprette arrangementet."
         }
         busy = false
     }

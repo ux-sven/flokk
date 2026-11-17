@@ -117,6 +117,10 @@ const del = await call("/rest/v1/rpc/delete_account", { method: "POST", body: "{
 if (del.body?.code === "PGRST202") bad("Mangler sletting av konto", "Kjør 20261116160000_delete_account.sql");
 else ok("Sletting av konto er satt opp (migrasjon 14)");
 
+const plan = await call("/rest/v1/rpc/my_plan", { method: "POST", body: "{}" });
+if (plan.body?.code === "PGRST202") bad("Mangler Flokk Pluss og gratisgrenser", "Kjør 20261117120000_plans.sql");
+else ok("Flokk Pluss og gratisgrenser er satt opp (migrasjon 15)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

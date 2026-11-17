@@ -135,7 +135,7 @@ struct CreateGroupView: View {
         } catch let e as PostgrestError where e.code == "23514" {
             error = "Adressen «\(cleanSlug)» kan ikke brukes. Velg en annen."
         } catch {
-            self.error = "Noe gikk galt. Prøv igjen."
+            self.error = planLimitMessage(error) ?? "Noe gikk galt. Prøv igjen."
         }
         busy = false
     }

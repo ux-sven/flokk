@@ -51,6 +51,7 @@ fun ProfileScreen() {
     val pushRegistered by PushManager.registered.collectAsState()
     val pushError by PushManager.lastError.collectAsState()
     var testResult by remember { mutableStateOf<String?>(null) }
+    var plan by remember { mutableStateOf<MyPlan?>(null) }
 
     LaunchedEffect(user?.id) {
         val uid = user?.id ?: return@LaunchedEffect
@@ -58,6 +59,7 @@ fun ProfileScreen() {
             name = supabase.from("profiles").select(Columns.raw("display_name")) { filter { eq("id", uid) } }
                 .decodeSingle<NameRow>().displayName
         }
+        plan = loadMyPlan()
     }
 
     Column(
@@ -95,6 +97,7 @@ fun ProfileScreen() {
                 status?.let { Text(it, fontSize = 13.sp) }
             }
         }
+        plan?.let { PlanCard(it) }
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Varsler", fontWeight = FontWeight.SemiBold, fontSize = 17.sp)

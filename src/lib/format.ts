@@ -17,6 +17,13 @@ export function formatDateTime(iso: string, now = Date.now()) {
   }).format(date);
 }
 
+/** «21. november 2026» */
+export function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", year: "numeric", timeZone: TZ }).format(
+    new Date(iso),
+  );
+}
+
 export function formatTime(iso: string) {
   return new Intl.DateTimeFormat("nb-NO", { hour: "2-digit", minute: "2-digit", timeZone: TZ }).format(
     new Date(iso),

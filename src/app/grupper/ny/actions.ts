@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { planLimitMessage } from "@/lib/plan";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { slugify } from "@/lib/format";
 import { asBackdrop, asTint } from "@/lib/tints";
@@ -25,6 +26,8 @@ export async function createGroup(_prev: CreateGroupState, formData: FormData): 
   const { error } = await supabase.from("groups").insert({ name, slug, description, visibility, tint, emoji, ...(backdrop ? { backdrop } : {}) });
 
   if (error) {
+    const limit = planLimitMessage(error);
+    if (limit) return { error: limit };
     if (error.code === "23505") return { error: `Adressen «${slug}» er allerede i bruk.` };
     if (error.code === "23514") return { error: `Adressen «${slug}» kan ikke brukes. Velg en annen.` };
     return { error: "Noe gikk galt. Prøv igjen." };

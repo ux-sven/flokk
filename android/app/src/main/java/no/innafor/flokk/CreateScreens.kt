@@ -108,7 +108,7 @@ fun CreateGroupScreen(onClose: () -> Unit, onCreated: (FlokkGroup) -> Unit) {
                 error = when {
                     e.message?.contains("23505") == true || e.message?.contains("duplicate") == true -> "Adressen «$s» er allerede i bruk."
                     e.message?.contains("23514") == true || e.message?.contains("check") == true -> "Adressen «$s» kan ikke brukes. Velg en annen."
-                    else -> "Noe gikk galt. Prøv igjen."
+                    else -> planLimitMessage(e) ?: "Noe gikk galt. Prøv igjen."
                 }
             } catch (e: Exception) {
                 error = "Noe gikk galt. Prøv igjen."
@@ -227,7 +227,7 @@ fun CreateEventScreen(groupId: String, onClose: () -> Unit, onCreated: (String) 
                     .onFailure { error = "Arrangementet ble opprettet, men tidsforslagene feilet." }
                 onCreated(created.id)
             } catch (e: Exception) {
-                error = "Kunne ikke opprette arrangementet."
+                error = planLimitMessage(e) ?: "Kunne ikke opprette arrangementet."
             }
             busy = false
         }

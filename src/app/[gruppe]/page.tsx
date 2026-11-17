@@ -24,6 +24,7 @@ import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { joinGroup } from "./actions";
+import { FREE_LIMITS, atLimit, type GroupPlan } from "@/lib/plan";
 
 const roleLabel = { owner: "Eier", admin: "Admin", member: "" } as const;
 
@@ -40,8 +41,9 @@ export default function GroupPage(props: PageProps<"/[gruppe]">) {
   );
 }
 
-async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
+async function GroupPageContent({ params, searchParams }: PageProps<"/[gruppe]">) {
   const { gruppe } = await params;
+  const full = (await searchParams).full === "1";
   const { supabase, group, user, role, isMember, isAdmin } = await loadGroup(gruppe);
 
   return (
@@ -87,7 +89,12 @@ async function GroupPageContent({ params }: PageProps<"/[gruppe]">) {
                 Logg inn for å bli med
               </Link>
             )}
-            {user && !isMember && (
+            {user && !isMember && full && (
+              <p className="rounded-2xl bg-card/80 px-4 py-3 text-sm">
+                Flokken er full. Gratisversjonen har plass til {FREE_LIMITS.members} medlemmer.
+              </p>
+            )}
+            {user && !isMember && !full && (
               <form action={joinGroup.bind(null, group.id, group.slug)}>
                 <Button type="submit" size="lg">
                   Bli med
@@ -138,7 +145,7 @@ async function MemberView({
   isOwner: boolean;
   canInvite: boolean;
 }) {
-  const [members, { data: events }, { data: messages }, { data: me }, { data: archived }] = await Promise.all([
+  const [members, { data: events }, { data: messages }, { data: me }, { data: archived }, { data: plan }] = await Promise.all([
     loadMembers(groupId),
     supabase
       .from("events")
@@ -169,7 +176,10 @@ async function MemberView({
       .not("archived_at", "is", null)
       .order("archived_at", { ascending: false })
       .limit(50),
+    // Gratisgrensene (null hvis migrasjon 15 ikke er kjørt – da vises ingen grenser)
+    supabase.rpc("group_plan", { gid: groupId }).then((r) => ({ data: (r.data ?? null) as GroupPlan | null })),
   ]);
+  const eventsFull = atLimit(plan?.upcoming_events ?? 0, plan?.max_upcoming_events);
 
   const eventList = (events ?? []) as unknown as GroupEvent[];
   const { voting, upcoming, past } = splitEvents(eventList);
@@ -190,10 +200,22 @@ async function MemberView({
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-2xl font-bold tracking-tight">Arrangementer</h2>
-              <Link href={`/${slug}/arrangement/ny`} className={buttonVariants({ size: "lg" })}>
-                <CalendarPlus /> Nytt arrangement
-              </Link>
+              {eventsFull ? (
+                <span className={buttonVariants({ size: "lg", className: "pointer-events-none opacity-50" })} aria-disabled>
+                  <CalendarPlus /> Nytt arrangement
+                </span>
+              ) : (
+                <Link href={`/${slug}/arrangement/ny`} className={buttonVariants({ size: "lg" })}>
+                  <CalendarPlus /> Nytt arrangement
+                </Link>
+              )}
             </div>
+            {eventsFull && (
+              <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-accent-foreground">
+                Gratisversjonen har ett kommende arrangement om gangen. Når dette er gjennomført, kan dere lage et nytt –
+                eller eieren kan oppgradere til Flokk Pluss.
+              </p>
+            )}
             {!upcoming.length && !voting.length ? (
               <div className="rounded-3xl bg-card p-6 text-muted-foreground shadow-card">
                 {past.length ? "Ingen kommende arrangementer." : "Ingen arrangementer ennå."} Foreslå noen tidspunkter
@@ -267,7 +289,24 @@ async function MemberView({
         members={
           <>
             <section className="space-y-4 rounded-3xl bg-card p-5 shadow-card">
-              <h2 className="text-xl font-semibold">Medlemmer · {members.length}</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xl font-semibold">
+                  Medlemmer · {members.length}
+                  {plan?.max_members != null && (
+                    <span className="font-normal text-muted-foreground"> av {plan.max_members}</span>
+                  )}
+                </h2>
+                {plan?.plus && (
+                  <Badge variant="secondary" className="bg-accent text-accent-foreground">
+                    Pluss
+                  </Badge>
+                )}
+              </div>
+              {plan && atLimit(plan.members, plan.max_members) && (
+                <p className="rounded-2xl bg-accent px-3 py-2 text-sm text-accent-foreground">
+                  Flokken er full. Nye medlemmer kan ikke bli med før eieren oppgraderer til Flokk Pluss.
+                </p>
+              )}
               <OnlineNow people={people} currentUserId={userId} className="rounded-2xl bg-emerald-500/10 px-3 py-2" />
               <ul className="space-y-3">
                 {members.map((m) => (

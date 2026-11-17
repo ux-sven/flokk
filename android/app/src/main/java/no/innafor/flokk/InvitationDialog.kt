@@ -63,7 +63,10 @@ fun InvitationDialog(token: String, onDismiss: () -> Unit) {
                                 onDismiss()
                                 AppRouter.open(PushTarget(i.groupId, null, false))
                             }
-                            .onFailure { error = "Kunne ikke bli med. Invitasjonen kan være utløpt eller gjelde en annen e-postadresse." }
+                            .onFailure {
+                                error = planLimitMessage(it)
+                                    ?: "Kunne ikke bli med. Invitasjonen kan være utløpt eller gjelde en annen e-postadresse."
+                            }
                         busy = false
                     }
                 }) { Text(if (busy) "Blir med …" else "Bli med") }

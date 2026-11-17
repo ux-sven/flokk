@@ -6,11 +6,13 @@ import { createClient, requireUser } from "@/lib/supabase/server";
 import type { NotifyLevel } from "@/lib/notifications";
 import { asBackdrop, asTint } from "@/lib/tints";
 import { parseCoords } from "@/lib/places";
+import { planLimitMessage } from "@/lib/plan";
 
 export async function joinGroup(groupId: string, slug: string) {
   const user = await requireUser(`/${slug}`);
   const supabase = await createClient();
-  await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id, role: "member" });
+  const { error } = await supabase.from("group_members").insert({ group_id: groupId, user_id: user.id, role: "member" });
+  if (planLimitMessage(error)) redirect(`/${slug}?full=1`);
   revalidatePath(`/${slug}`);
 }
 
@@ -72,7 +74,7 @@ export async function createEvent(
     })
     .select("id")
     .single();
-  if (error || !event) return { error: "Kunne ikke opprette arrangementet." };
+  if (error || !event) return { error: planLimitMessage(error) ?? "Kunne ikke opprette arrangementet." };
 
   const unique = [...new Set(options)].sort();
   const { error: optError } = await supabase

@@ -29,6 +29,7 @@ Rekkefølgen er viktig. Velg én av måtene:
 12. `supabase/migrations/20261116120000_edit_and_ownership.sql` (redigering, eierskap og strammere rettigheter)
 13. `supabase/migrations/20261116140000_members_can_invite.sql` (vanlige medlemmer kan invitere)
 14. `supabase/migrations/20261116160000_delete_account.sql` (slett egen konto)
+15. `supabase/migrations/20261117120000_plans.sql` (gratisgrenser og Flokk Pluss – se [flokk-pluss.md](flokk-pluss.md))
 
 **B – CLI (anbefalt på sikt, holder styr på hva som er kjørt):**
 

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { KeyRound, LogOut, ShieldCheck, Sparkles } from "lucide-react";
 import Loading from "@/app/loading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { groupSurface } from "@/lib/tints";
 import { cn } from "@/lib/utils";
+import { FREE_LIMITS, type MyPlan } from "@/lib/plan";
+import { formatDate } from "@/lib/format";
 import { DeleteAccount } from "./delete-account";
 import { ProfileForm } from "./profile-form";
 
@@ -31,13 +33,14 @@ type MyGroup = {
 async function AccountContent() {
   const user = await requireUser("/konto");
   const supabase = await createClient();
-  const [{ data: profile }, { data: memberships }] = await Promise.all([
+  const [{ data: profile }, { data: memberships }, { data: plan }] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).maybeSingle(),
     supabase
       .from("group_members")
       .select("role, groups(id, name, slug, tint, backdrop)")
       .eq("user_id", user.id)
       .order("joined_at"),
+    supabase.rpc("my_plan").then((r) => ({ data: (r.data ?? null) as MyPlan | null })),
   ]);
   const name = profile?.display_name || "";
   const groups = ((memberships ?? []) as unknown as MyGroup[]).filter((m) => m.groups);
@@ -72,6 +75,8 @@ async function AccountContent() {
           </form>
         </div>
       </section>
+
+      {plan && <PlanCard plan={plan} />}
 
       <section className="space-y-4 rounded-3xl bg-card p-6 shadow-card sm:p-8">
         <h2 className="text-xl font-semibold">Mine flokker · {groups.length}</h2>
@@ -108,5 +113,41 @@ async function AccountContent() {
         </Link>
       </p>
     </main>
+  );
+}
+
+function PlanCard({ plan }: { plan: MyPlan }) {
+  if (plan.plus) {
+    return (
+      <section className="brand-panel space-y-2 rounded-3xl p-6 shadow-card sm:p-8">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-5 text-gold" />
+          <h2 className="text-xl font-semibold">Flokk Pluss</h2>
+        </div>
+        <p className="text-sm text-[#f2efe8]/75">
+          Ingen grenser på flokker, medlemmer eller arrangementer i flokkene du eier.
+          {plan.expires_at ? ` Gjelder til ${formatDate(plan.expires_at)}.` : ""}
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section className="space-y-4 rounded-3xl bg-card p-6 shadow-card sm:p-8">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-xl font-semibold">Gratisversjonen</h2>
+        <Badge variant="secondary">
+          {plan.owned_groups} av {plan.max_groups} flokker
+        </Badge>
+      </div>
+      <ul className="space-y-1.5 text-sm text-muted-foreground">
+        <li>Eie inntil {FREE_LIMITS.groups} flokker</li>
+        <li>Inntil {FREE_LIMITS.members} medlemmer i hver flokk</li>
+        <li>Ett kommende arrangement om gangen i hver flokk</li>
+      </ul>
+      <p className="text-sm">
+        Med <span className="font-semibold text-gold-text">Flokk Pluss</span> forsvinner grensene for alle flokkene du
+        eier. Kommer snart.
+      </p>
+    </section>
   );
 }

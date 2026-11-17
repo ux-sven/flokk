@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { FREE_LIMITS, planLimitMessage } from "@/lib/plan";
 
 export const metadata: Metadata = { title: "Invitasjon" };
 
@@ -14,7 +15,7 @@ async function accept(token: string) {
   "use server";
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_invitation", { invite_token: token });
-  if (error) redirect(`/invitasjon/${token}?feil=1`);
+  if (error) redirect(`/invitasjon/${token}?feil=${planLimitMessage(error) ? "full" : "1"}`);
   redirect(`/${data}`);
 }
 
@@ -54,7 +55,14 @@ async function InvitationPageContent({ params, searchParams }: PageProps<"/invit
             <p className="text-sm text-muted-foreground">Du er invitert til</p>
             <h1 className="text-3xl font-bold">{invite.group_name}</h1>
             {invite.group_description && <p className="text-muted-foreground">{invite.group_description}</p>}
-            {feil && <p className="text-sm text-destructive">Kunne ikke godta invitasjonen.</p>}
+            {feil === "full" ? (
+              <p className="rounded-2xl bg-accent px-4 py-3 text-sm text-accent-foreground">
+                Flokken er full. Gratisversjonen har plass til {FREE_LIMITS.members} medlemmer – si fra til den som
+                inviterte deg, så kan eieren oppgradere til Flokk Pluss.
+              </p>
+            ) : (
+              feil && <p className="text-sm text-destructive">Kunne ikke godta invitasjonen.</p>
+            )}
             {user ? (
               <form action={accept.bind(null, token)}>
                 <Button type="submit" size="lg" className="h-11 w-full">

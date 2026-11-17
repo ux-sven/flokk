@@ -17,6 +17,7 @@ struct GroupView: View {
     @State private var notifyLevel = "all"
     @State private var look: (tint: String?, backdrop: String?)?
     @State private var error: String?
+    @State private var plan: GroupPlan?
     @Environment(Router.self) private var router
 
     init(group: FlokkGroup) { _group = State(initialValue: group) }
@@ -44,6 +45,12 @@ struct GroupView: View {
                         Button { creatingEvent = true } label: { Label("Nytt", systemImage: "calendar.badge.plus") }
                             .prominentButton()
                             .buttonBorderShape(.capsule)
+                            .disabled(plan?.eventsFull == true)
+                    }
+                    if plan?.eventsFull == true {
+                        Text("Gratisversjonen har ett kommende arrangement om gangen. Når dette er gjennomført, kan dere lage et nytt – eller eieren kan oppgradere til Flokk Pluss.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                     let sections = EventSections(events)
                     if sections.upcoming.isEmpty && sections.voting.isEmpty {
@@ -94,7 +101,20 @@ struct GroupView: View {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Medlemmer · \(members.count)").font(.title3.bold())
+                    HStack {
+                        Text("Medlemmer · \(members.count)") + Text(plan?.maxMembers.map { " av \($0)" } ?? "").foregroundStyle(.secondary)
+                        Spacer()
+                        if plan?.plus == true {
+                            Text("Pluss").font(.caption.weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 3)
+                                .background(.tint.opacity(0.15), in: .capsule)
+                        }
+                    }
+                    .font(.title3.bold())
+                    if plan?.membersFull == true {
+                        Text("Flokken er full. Nye medlemmer kan ikke bli med før eieren oppgraderer til Flokk Pluss.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(members) { m in
                         HStack(spacing: 12) {
                             AvatarView(name: m.name, url: m.profiles?.avatarUrl, online: presence.online.contains(m.userId))
@@ -320,6 +340,8 @@ struct GroupView: View {
             .decoded()
         if let e = try? await ev { events = e }
         if let m = try? await mem { members = m }
+        // nil hvis migrasjon 15 ikke er kjørt – da vises ingen grenser
+        plan = try? await supabase.rpc("group_plan", params: ["gid": group.id.uuidString.lowercased()]).decoded()
         struct Level: Decodable { let notifyLevel: String }
         if let uid = auth.userId, let l: Level = try? await supabase.from("group_members").select("notify_level")
             .eq("group_id", value: group.id).eq("user_id", value: uid).single().decoded() {

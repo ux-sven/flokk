@@ -66,7 +66,8 @@ struct InvitationView: View {
             dismiss()
             router.open(PushTarget(groupId: info!.groupId, eventId: nil, isMessage: false))
         } catch {
-            self.error = "Kunne ikke bli med. Invitasjonen kan være utløpt eller gjelde en annen e-postadresse."
+            self.error = planLimitMessage(error)
+                ?? "Kunne ikke bli med. Invitasjonen kan være utløpt eller gjelde en annen e-postadresse."
         }
         busy = false
     }

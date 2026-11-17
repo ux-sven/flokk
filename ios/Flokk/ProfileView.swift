@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var confirmDelete = false
     @State private var deleteText = ""
     @State private var deleteError: String?
+    @State private var plan: MyPlan?
 
     var body: some View {
         NavigationStack {
@@ -38,6 +39,7 @@ struct ProfileView: View {
                     else if saved { Label("Lagret", systemImage: "checkmark").foregroundStyle(.green) }
                     else { Text("Dette er navnet de andre i flokkene dine ser.") }
                 }
+                if let plan { PlanSection(plan: plan) }
                 Section {
                     switch push.status {
                     case .authorized, .provisional, .ephemeral:
@@ -112,6 +114,8 @@ struct ProfileView: View {
         if let r: Row = try? await supabase.from("profiles").select("display_name").eq("id", value: uid).single().decoded() {
             name = r.displayName
         }
+        // nil hvis migrasjon 15 ikke er kjørt
+        plan = try? await supabase.rpc("my_plan").decoded()
     }
 
     private func save() async {

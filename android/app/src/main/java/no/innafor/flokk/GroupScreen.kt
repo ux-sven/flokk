@@ -88,6 +88,7 @@ fun GroupScreen(
     var group by remember { mutableStateOf<FlokkGroup?>(null) }
     var events by remember { mutableStateOf<List<EventSummary>>(emptyList()) }
     var members by remember { mutableStateOf<List<Member>>(emptyList()) }
+    var plan by remember { mutableStateOf<GroupPlan?>(null) }
     val online = rememberOnline(groupId, me)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -133,6 +134,7 @@ fun GroupScreen(
     }
 
     LaunchedEffect(groupId) {
+        plan = loadGroupPlan(groupId)
         runCatching {
             group = supabase.from("groups").select(Columns.raw(GROUP_COLUMNS)) { filter { eq("id", groupId) } }
                 .decodeSingle<FlokkGroup>()
@@ -264,16 +266,24 @@ fun GroupScreen(
         ) {
             item { GroupHeader(g) }
             if (others.isNotEmpty()) item { OnlineNowRow(others) }
-            item {
+            item { Column {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Arrangementer", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    Button(onClick = { onCreateEvent(g.id) }) {
+                    Button(onClick = { onCreateEvent(g.id) }, enabled = plan?.eventsFull != true) {
                         Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Nytt")
                     }
                 }
-            }
+                if (plan?.eventsFull == true) {
+                    Text(
+                        "Gratisversjonen har ett kommende arrangement om gangen. Når dette er gjennomført, kan dere lage et nytt – eller eieren kan oppgradere til Flokk Pluss.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            } }
             val sections = EventSections(events)
             if (sections.upcoming.isEmpty() && sections.voting.isEmpty()) {
                 item {
@@ -307,7 +317,22 @@ fun GroupScreen(
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Medlemmer · ${members.size}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Medlemmer · ${members.size}" + (plan?.maxMembers?.let { " av $it" } ?: ""),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (plan?.plus == true) Text("Pluss", color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.SemiBold)
+                        }
+                        if (plan?.membersFull == true) {
+                            Text(
+                                "Flokken er full. Nye medlemmer kan ikke bli med før eieren oppgraderer til Flokk Pluss.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp,
+                            )
+                        }
                         members.forEach { m ->
                             Row(
                                 Modifier.fillMaxWidth().combinedClickable(
