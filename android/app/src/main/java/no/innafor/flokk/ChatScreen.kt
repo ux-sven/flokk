@@ -1,5 +1,7 @@
 package no.innafor.flokk
 
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -147,15 +149,25 @@ fun ChatScreen(groupId: String, eventId: String?, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (messages.isEmpty()) item { Text("Ingen meldinger ennå. Si hei!", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            items(messages, key = { it.id }) { m -> Bubble(m, mine = m.authorId == me, name = names[m.authorId] ?: "Medlem") }
+            items(messages, key = { it.id }) { m ->
+                Bubble(m, mine = m.authorId == me, name = names[m.authorId] ?: "Medlem", groupId = groupId) { blocked ->
+                    messages = messages.filter { it.authorId != blocked }
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Bubble(m: Message, mine: Boolean, name: String) {
+private fun Bubble(m: Message, mine: Boolean, name: String, groupId: String, onBlocked: (String) -> Unit) {
+    var menu by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth(),
+        // Langt trykk på andres meldinger: rapporter eller blokker
+        Modifier.fillMaxWidth().then(
+            if (mine) Modifier
+            else Modifier.combinedClickable(onClick = {}, onLongClick = { menu = true }, onLongClickLabel = "Rapporter eller blokker"),
+        ),
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom,
     ) {
@@ -173,6 +185,12 @@ private fun Bubble(m: Message, mine: Boolean, name: String) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             )
             Text(Fmt.messageTime(m.createdAt), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            if (!mine) {
+                SafetyMenu(
+                    expanded = menu, onDismiss = { menu = false },
+                    groupId = groupId, userId = m.authorId, name = name, messageId = m.id, onBlocked = onBlocked,
+                )
+            }
         }
     }
 }

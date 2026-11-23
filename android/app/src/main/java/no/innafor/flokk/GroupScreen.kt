@@ -351,6 +351,15 @@ fun GroupScreen(
                                             .padding(horizontal = 8.dp, vertical = 3.dp),
                                     )
                                 }
+                                if (m.userId != me) {
+                                    var safety by remember { mutableStateOf(false) }
+                                    Box {
+                                        IconButton(onClick = { safety = true }, modifier = Modifier.size(32.dp)) {
+                                            Icon(Icons.Default.MoreVert, "Flere valg for ${m.name}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        SafetyMenu(expanded = safety, onDismiss = { safety = false }, groupId = g.id, userId = m.userId, name = m.name)
+                                    }
+                                }
                             }
                         }
                         if (canInvite) {

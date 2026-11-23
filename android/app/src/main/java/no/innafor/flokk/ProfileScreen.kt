@@ -124,6 +124,7 @@ fun ProfileScreen() {
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Logg ut", color = MaterialTheme.colorScheme.error) }
+        BlockedUsersCard()
         DeleteAccountSection()
     }
 }
