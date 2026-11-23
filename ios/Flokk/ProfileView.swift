@@ -1,4 +1,5 @@
 import Supabase
+import StoreKit
 import SwiftUI
 
 struct ProfileView: View {
@@ -14,6 +15,8 @@ struct ProfileView: View {
     @State private var deleteText = ""
     @State private var deleteError: String?
     @State private var plan: MyPlan?
+    @State private var upgrading = false
+    @State private var managing = false
 
     var body: some View {
         NavigationStack {
@@ -39,7 +42,7 @@ struct ProfileView: View {
                     else if saved { Label("Lagret", systemImage: "checkmark").foregroundStyle(.green) }
                     else { Text("Dette er navnet de andre i flokkene dine ser.") }
                 }
-                if let plan { PlanSection(plan: plan) }
+                if let plan { PlanSection(plan: plan, upgrading: $upgrading, managing: $managing) }
                 Section {
                     switch push.status {
                     case .authorized, .provisional, .ephemeral:
@@ -90,6 +93,8 @@ struct ProfileView: View {
             }
             .navigationTitle("Min profil")
             .task(id: PlusStore.shared.version) { await load() }
+            .sheet(isPresented: $upgrading) { PlusView() }
+            .manageSubscriptionsSheet(isPresented: $managing)
         }
     }
 

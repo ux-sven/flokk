@@ -42,8 +42,9 @@ func planLimitMessage(_ error: Error) -> String? {
 /// Planen din på profilsiden.
 struct PlanSection: View {
     let plan: MyPlan
-    @State private var upgrading = false
-    @State private var managing = false
+    // Arkene vises fra ProfileView: .sheet inne i en Section i en Form krever to trykk
+    @Binding var upgrading: Bool
+    @Binding var managing: Bool
 
     var body: some View {
         Section {
@@ -72,7 +73,5 @@ struct PlanSection: View {
                 ? "Ingen grenser på flokker, medlemmer eller arrangementer i flokkene du eier."
                 : "Med Flokk Pluss forsvinner grensene for alle flokkene du eier.")
         }
-        .sheet(isPresented: $upgrading) { PlusView() }
-        .manageSubscriptionsSheet(isPresented: $managing)
     }
 }
