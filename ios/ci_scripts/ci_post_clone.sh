@@ -17,3 +17,9 @@ enum Secrets {
 }
 SWIFT
 echo "Skrev ios/Flokk/Secrets.swift"
+# Vises i byggeloggen, så det er lett å se om kjøp av Flokk Pluss er slått på (verdien skrives ikke ut)
+if [ -n "${REVENUECAT_IOS_KEY:-}" ]; then
+  echo "REVENUECAT_IOS_KEY er satt – kjøp av Flokk Pluss er på"
+else
+  echo "warning: REVENUECAT_IOS_KEY mangler i Xcode Cloud-workflowen – kjøp av Flokk Pluss er slått av"
+fi

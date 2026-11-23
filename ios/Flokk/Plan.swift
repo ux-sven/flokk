@@ -27,6 +27,12 @@ nonisolated struct GroupPlan: Decodable, Sendable {
     var membersFull: Bool { maxMembers.map { members >= $0 } ?? false }
 }
 
+/// En gratisgrense som er nådd, vist øverst på kjøpsskjermen.
+struct LimitReason: Identifiable {
+    let id = UUID()
+    let text: String
+}
+
 /// Meldingen fra databasen når en gratisgrense er nådd (hint «plan_limit:…»), ellers nil.
 func planLimitMessage(_ error: Error) -> String? {
     guard let e = error as? PostgrestError, e.hint?.hasPrefix("plan_limit:") == true else { return nil }
@@ -55,10 +61,8 @@ struct PlanSection: View {
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                if PlusStore.shared.isEnabled {
-                    Button { upgrading = true } label: {
-                        Label("Oppgrader til Flokk Pluss", systemImage: "sparkles")
-                    }
+                Button { upgrading = true } label: {
+                    Label("Oppgrader til Flokk Pluss", systemImage: "sparkles")
                 }
             }
         } header: {
@@ -66,9 +70,7 @@ struct PlanSection: View {
         } footer: {
             Text(plan.plus
                 ? "Ingen grenser på flokker, medlemmer eller arrangementer i flokkene du eier."
-                : PlusStore.shared.isEnabled
-                    ? "Med Flokk Pluss forsvinner grensene for alle flokkene du eier."
-                    : "Med Flokk Pluss forsvinner grensene for alle flokkene du eier. Kommer snart.")
+                : "Med Flokk Pluss forsvinner grensene for alle flokkene du eier.")
         }
         .sheet(isPresented: $upgrading) { PlusView() }
         .manageSubscriptionsSheet(isPresented: $managing)

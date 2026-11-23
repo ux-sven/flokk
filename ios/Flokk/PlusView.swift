@@ -3,6 +3,8 @@ import SwiftUI
 
 /// Kjøpsskjermen for Flokk Pluss.
 struct PlusView: View {
+    /// Hvorfor kjøpsskjermen vises, f.eks. «Du eier allerede 3 flokker …»
+    var reason: String?
     @Environment(\.dismiss) private var dismiss
     @State private var store = PlusStore.shared
     @State private var packages: [Package] = []
@@ -16,6 +18,13 @@ struct PlusView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    if let reason {
+                        Label(reason, systemImage: "lock.fill")
+                            .font(.callout.weight(.medium))
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.tint.opacity(0.12), in: .rect(cornerRadius: 14))
+                    }
                     header
                     benefits
                     if done {

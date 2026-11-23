@@ -326,7 +326,7 @@ struct GroupView: View {
 
     /// Bare eieren kan oppgradere (Pluss følger eieren av flokken).
     @ViewBuilder private var upgradeButton: some View {
-        if myRole == "owner" && PlusStore.shared.isEnabled {
+        if myRole == "owner" {
             Button { upgrading = true } label: { Label("Oppgrader til Flokk Pluss", systemImage: "sparkles") }
                 .font(.subheadline.weight(.semibold))
         }

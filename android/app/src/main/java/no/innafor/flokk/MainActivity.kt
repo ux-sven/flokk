@@ -5,7 +5,12 @@ import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.BadgedBox
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -126,7 +131,26 @@ private fun MainTabs() {
             if (tab == 0) {
                 NavHost(nav, startDestination = GroupsRoute) {
                     composable<GroupsRoute> {
-                        GroupsScreen(onOpen = { nav.navigate(GroupRoute(it.id)) }, onCreate = { nav.navigate(CreateGroupRoute) })
+                        // Gratisgrensen sjekkes før skjemaet, så ingen fyller ut en flokk som ikke kan lagres
+                        val scope = rememberCoroutineScope()
+                        var limit by remember { mutableStateOf<MyPlan?>(null) }
+                        GroupsScreen(onOpen = { nav.navigate(GroupRoute(it.id)) }, onCreate = {
+                            scope.launch {
+                                val plan = loadMyPlan()
+                                if (plan != null && !plan.plus && plan.ownedGroups >= plan.maxGroups) limit = plan
+                                else nav.navigate(CreateGroupRoute)
+                            }
+                        })
+                        limit?.let { plan ->
+                            AlertDialog(
+                                onDismissRequest = { limit = null },
+                                title = { Text("Du har nådd grensen for flokker") },
+                                text = {
+                                    Text("Du eier allerede ${plan.ownedGroups} flokker, som er grensen i gratisversjonen. Med Flokk Pluss kan du lage så mange du vil – det kommer snart til Android.")
+                                },
+                                confirmButton = { TextButton(onClick = { limit = null }) { Text("OK") } },
+                            )
+                        }
                     }
                     composable<CreateGroupRoute> {
                         CreateGroupScreen(onClose = { nav.popBackStack() }) { g ->

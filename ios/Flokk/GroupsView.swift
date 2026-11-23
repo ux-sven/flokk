@@ -8,6 +8,7 @@ struct GroupsView: View {
     @State private var loaded = false
     @State private var error: String?
     @State private var creating = false
+    @State private var groupLimit: LimitReason?
 
     var body: some View {
         @Bindable var router = router
@@ -45,9 +46,10 @@ struct GroupsView: View {
                 }
             }
             .toolbar {
-                Button { creating = true } label: { Image(systemName: "plus") }
+                Button { Task { await startNewGroup() } } label: { Image(systemName: "plus") }
                     .accessibilityLabel("Ny flokk")
             }
+            .sheet(item: $groupLimit) { limit in PlusView(reason: limit.text) }
             .sheet(isPresented: $creating) {
                 CreateGroupView { g in
                     groups.append(g)
@@ -57,6 +59,16 @@ struct GroupsView: View {
             .refreshable { await load() }
             .task(id: router.groupsVersion) { await load() }
             .overlay { if !loaded { ProgressView() } }
+        }
+    }
+
+    /// Gratisgrensen sjekkes før skjemaet, så ingen fyller ut en flokk som ikke kan lagres.
+    private func startNewGroup() async {
+        if let plan: MyPlan = try? await supabase.rpc("my_plan").decoded(),
+           !plan.plus, plan.ownedGroups >= plan.maxGroups {
+            groupLimit = LimitReason(text: "Du eier allerede \(plan.ownedGroups) flokker, som er grensen i gratisversjonen. Med Flokk Pluss kan du lage så mange du vil.")
+        } else {
+            creating = true
         }
     }
 
