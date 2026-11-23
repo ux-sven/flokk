@@ -24,6 +24,7 @@ import type { NotifyLevel } from "@/lib/notifications";
 import type { Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { joinGroup } from "./actions";
+import { SafetyMenu } from "@/components/safety-menu";
 import { FREE_LIMITS, atLimit, type GroupPlan } from "@/lib/plan";
 
 const roleLabel = { owner: "Eier", admin: "Admin", member: "" } as const;
@@ -325,6 +326,7 @@ async function MemberView({
                     {m.user_id !== userId && (isOwner || (isAdmin && m.role === "member")) && (
                       <RemoveMemberButton groupId={groupId} slug={slug} memberId={m.user_id} name={names[m.user_id]} />
                     )}
+                    {m.user_id !== userId && <SafetyMenu groupId={groupId} userId={m.user_id} name={names[m.user_id]} />}
                   </li>
                 ))}
               </ul>

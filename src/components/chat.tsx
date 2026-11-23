@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MemberAvatar } from "@/components/member-avatar";
+import { SafetyMenu } from "@/components/safety-menu";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/format";
 import type { Message } from "@/lib/types";
@@ -24,6 +25,13 @@ export function Chat({ groupId, eventId = null, currentUserId, names, initialMes
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Ny liste fra serveren (f.eks. etter blokkering) erstatter den lokale
+  const [serverMessages, setServerMessages] = useState(initialMessages);
+  if (serverMessages !== initialMessages) {
+    setServerMessages(initialMessages);
+    setMessages(initialMessages);
+  }
 
   useEffect(() => {
     const channel = supabase
@@ -73,12 +81,24 @@ export function Chat({ groupId, eventId = null, currentUserId, names, initialMes
           const mine = m.author_id === currentUserId;
           const name = names[m.author_id] ?? "Medlem";
           return (
-            <div key={m.id} className={cn("flex gap-2", mine && "flex-row-reverse")}>
+            <div key={m.id} className={cn("group/msg flex gap-2", mine && "flex-row-reverse")}>
               <MemberAvatar name={name} className="size-7" />
               <div className={cn("max-w-[80%] space-y-0.5", mine && "text-right")}>
-                <p className="text-[11px] text-muted-foreground">
-                  {mine ? "Du" : name} · {formatDateTime(m.created_at)}
-                </p>
+                <div className={cn("flex items-center gap-1", mine && "justify-end")}>
+                  <p className="text-[11px] text-muted-foreground">
+                    {mine ? "Du" : name} · {formatDateTime(m.created_at)}
+                  </p>
+                  {!mine && (
+                    <SafetyMenu
+                      groupId={groupId}
+                      userId={m.author_id}
+                      name={name}
+                      messageId={m.id}
+                      onBlocked={(uid) => setMessages((prev) => prev.filter((x) => x.author_id !== uid))}
+                      className="-my-1 opacity-60 group-hover/msg:opacity-100 focus-within:opacity-100"
+                    />
+                  )}
+                </div>
                 <p
                   className={cn(
                     "inline-block rounded-2xl px-3 py-2 text-left text-sm whitespace-pre-wrap",

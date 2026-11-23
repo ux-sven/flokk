@@ -121,6 +121,14 @@ const plan = await call("/rest/v1/rpc/my_plan", { method: "POST", body: "{}" });
 if (plan.body?.code === "PGRST202") bad("Mangler Flokk Pluss og gratisgrenser", "Kjør 20261117120000_plans.sql");
 else ok("Flokk Pluss og gratisgrenser er satt opp (migrasjon 15)");
 
+// Alle argumentene må være med, ellers svarer PostgREST PGRST202 selv om funksjonen finnes
+const report = await call("/rest/v1/rpc/report_content", {
+  method: "POST",
+  body: JSON.stringify({ report_kind: "user", target: null, gid: null, report_reason: "other", report_details: null }),
+});
+if (report.body?.code === "PGRST202") bad("Mangler rapportering og blokkering", "Kjør 20261123120000_reports_and_blocks.sql");
+else ok("Rapportering og blokkering er satt opp (migrasjon 16)");
+
 const rpc = await call("/rest/v1/rpc/get_invitation", { method: "POST", body: JSON.stringify({ invite_token: "sjekk" }) });
 if (rpc.status === 200) ok("RPC get_invitation finnes");
 else bad(`RPC get_invitation svarer ${rpc.status}`, "Kjør migrasjonene på nytt");

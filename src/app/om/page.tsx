@@ -99,6 +99,10 @@ export default function AboutPage() {
         <Link href="/personvern" className="hover:text-foreground hover:underline">
           Personvern
         </Link>
+        {" · "}
+        <Link href="/vilkar" className="hover:text-foreground hover:underline">
+          Vilkår
+        </Link>
       </p>
     </main>
   );

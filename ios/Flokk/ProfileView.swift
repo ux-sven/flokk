@@ -65,6 +65,7 @@ struct ProfileView: View {
                     if let testResult { Text(testResult) }
                     else if let e = push.lastError { Text(e) }
                 }
+                BlockedUsersSection()
                 Section {
                     Button("Logg ut", role: .destructive) { Task { await auth.signOut() } }
                 }

@@ -11,6 +11,8 @@ struct ChatView: View {
     @State private var text = ""
     @State private var sending = false
     @State private var channel: RealtimeChannelV2?
+    @State private var reporting: ReportTarget?
+    @State private var blocking: (id: UUID, name: String)?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -19,7 +21,20 @@ struct ChatView: View {
                     if messages.isEmpty {
                         Text("Ingen meldinger ennå. Si hei!").foregroundStyle(.secondary).padding(.top, 40)
                     }
-                    ForEach(messages) { m in bubble(m).id(m.id) }
+                    ForEach(messages) { m in
+                        bubble(m).id(m.id)
+                            .contextMenu {
+                                if m.authorId != auth.userId {
+                                    let name = names[m.authorId] ?? "Medlem"
+                                    Button { reporting = ReportTarget(kind: .message, id: m.id, groupId: groupId, name: name) } label: {
+                                        Label("Rapporter meldingen", systemImage: "flag")
+                                    }
+                                    Button(role: .destructive) { blocking = (m.authorId, name) } label: {
+                                        Label("Blokker \(name)", systemImage: "hand.raised")
+                                    }
+                                }
+                            }
+                    }
                 }
                 .padding()
             }
@@ -29,6 +44,22 @@ struct ChatView: View {
             }
         }
         .safeAreaInset(edge: .bottom) { inputBar }
+        .sheet(item: $reporting) { ReportSheet(target: $0) }
+        .alert(
+            "Blokkere \(blocking?.name ?? "")?",
+            isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } }),
+            presenting: blocking
+        ) { b in
+            Button("Blokker", role: .destructive) {
+                Task {
+                    try? await Moderation.block(b.id)
+                    messages.removeAll { $0.authorId == b.id }
+                }
+            }
+            Button("Avbryt", role: .cancel) {}
+        } message: { b in
+            Text("Du ser ikke lenger meldingene til \(b.name) og får ikke varsler om det \(b.name) gjør. \(b.name) får ikke vite det. Du kan oppheve det under Profil.")
+        }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(eventId == nil ? "Gruppechat" : "Chat for arrangementet")
         .navigationBarTitleDisplayMode(.inline)

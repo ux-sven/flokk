@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { FREE_LIMITS, type MyPlan } from "@/lib/plan";
 import { formatDate } from "@/lib/format";
 import { DeleteAccount } from "./delete-account";
+import { BlockedUsers, type BlockedUser } from "./blocked-users";
 import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "Min profil" };
@@ -33,7 +34,7 @@ type MyGroup = {
 async function AccountContent() {
   const user = await requireUser("/konto");
   const supabase = await createClient();
-  const [{ data: profile }, { data: memberships }, { data: plan }] = await Promise.all([
+  const [{ data: profile }, { data: memberships }, { data: plan }, { data: blocks }] = await Promise.all([
     supabase.from("profiles").select("display_name, avatar_url").eq("id", user.id).maybeSingle(),
     supabase
       .from("group_members")
@@ -41,7 +42,13 @@ async function AccountContent() {
       .eq("user_id", user.id)
       .order("joined_at"),
     supabase.rpc("my_plan").then((r) => ({ data: (r.data ?? null) as MyPlan | null })),
+    // Tom liste hvis migrasjon 16 ikke er kjørt
+    supabase
+      .from("user_blocks")
+      .select("blocked_id, profiles!user_blocks_blocked_id_fkey(display_name)")
+      .then((r) => ({ data: (r.data ?? []) as unknown as { blocked_id: string; profiles: { display_name: string } | null }[] })),
   ]);
+  const blocked: BlockedUser[] = blocks.map((b) => ({ id: b.blocked_id, name: b.profiles?.display_name || "Bruker" }));
   const name = profile?.display_name || "";
   const groups = ((memberships ?? []) as unknown as MyGroup[]).filter((m) => m.groups);
   const owned = groups.filter((m) => m.role === "owner").map((m) => m.groups!.id);
@@ -104,6 +111,8 @@ async function AccountContent() {
           </ul>
         )}
       </section>
+
+      <BlockedUsers initial={blocked} />
 
       <DeleteAccount ownedWithOthers={ownedWithOthers} />
 

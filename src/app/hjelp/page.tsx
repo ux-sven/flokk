@@ -43,6 +43,17 @@ export default function HelpPage() {
       ),
     },
     {
+      q: "Noen sender upassende meldinger – hva gjør jeg?",
+      a: (
+        <>
+          Trykk <strong>⋯</strong> ved meldingen eller ved personen i medlemslisten, og velg <strong>Rapporter</strong>{" "}
+          eller <strong>Blokker</strong>. Blokkerer du noen, ser du ikke lenger meldingene deres og får ingen varsler om
+          det de gjør – de får ikke vite det. Rapporter går til oss, og vi ser på dem innen et døgn. Du opphever en
+          blokkering under <Link href="/konto" className={link}>Min profil</Link>.
+        </>
+      ),
+    },
+    {
       q: "Hva er gratis, og hva er Flokk Pluss?",
       a: (
         <>

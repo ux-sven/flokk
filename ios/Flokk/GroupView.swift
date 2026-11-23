@@ -19,6 +19,8 @@ struct GroupView: View {
     @State private var error: String?
     @State private var plan: GroupPlan?
     @State private var upgrading = false
+    @State private var reporting: ReportTarget?
+    @State private var blocking: Member?
     @Environment(Router.self) private var router
 
     init(group: FlokkGroup) { _group = State(initialValue: group) }
@@ -128,6 +130,22 @@ struct GroupView: View {
                                     .padding(.horizontal, 8).padding(.vertical, 3)
                                     .background(.quaternary, in: .capsule)
                             }
+                            if m.userId != auth.userId {
+                                Menu {
+                                    Button { reporting = ReportTarget(kind: .user, id: m.userId, groupId: group.id, name: m.name) } label: {
+                                        Label("Rapporter \(m.name)", systemImage: "flag")
+                                    }
+                                    Button(role: .destructive) { blocking = m } label: {
+                                        Label("Blokker \(m.name)", systemImage: "hand.raised")
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis")
+                                        .frame(width: 30, height: 30)
+                                        .contentShape(.rect)
+                                }
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("Flere valg for \(m.name)")
+                            }
                         }
                         .contextMenu {
                             if canRemove(m) {
@@ -196,6 +214,17 @@ struct GroupView: View {
         .task { await load() }
         .onChange(of: PlusStore.shared.version) { Task { await load() } }
         .sheet(isPresented: $upgrading) { PlusView() }
+        .sheet(item: $reporting) { ReportSheet(target: $0) }
+        .alert(
+            "Blokkere \(blocking?.name ?? "")?",
+            isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } }),
+            presenting: blocking
+        ) { m in
+            Button("Blokker", role: .destructive) { Task { try? await Moderation.block(m.userId) } }
+            Button("Avbryt", role: .cancel) {}
+        } message: { m in
+            Text("Du ser ikke lenger meldingene til \(m.name) og får ikke varsler om det \(m.name) gjør. \(m.name) får ikke vite det. Du kan oppheve det under Profil.")
+        }
         .task(id: scenePhase) {
             guard let uid = auth.userId else { return }
             if scenePhase == .active { await presence.start(groupId: group.id, userId: uid) } else { await presence.stop() }

@@ -52,7 +52,11 @@ export function RegisterForm({ next }: { next: string }) {
         {pending ? "Oppretter …" : "Opprett bruker"}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
-        Les om hva vi lagrer i{" "}
+        Ved å opprette en bruker godtar du{" "}
+        <Link href="/vilkar" className="underline underline-offset-2 hover:text-foreground">
+          vilkårene
+        </Link>
+        , blant annet at støtende innhold og trakassering ikke er lov. Les om hva vi lagrer i{" "}
         <Link href="/personvern" className="underline underline-offset-2 hover:text-foreground">
           personvernerklæringen
         </Link>
