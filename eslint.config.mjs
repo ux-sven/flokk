@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Deno-kode for Supabase Edge Functions
     "supabase/functions/**",
+    // De native appene (og pakkene Xcode og Gradle laster ned dit)
+    "ios/**",
+    "android/**",
   ]),
 ]);
 

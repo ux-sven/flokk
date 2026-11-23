@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "Personvern",
   description: "Hvilke opplysninger Flokk lagrer, hvorfor, og hvordan du sletter dem.",
 };
 
-/** Kontaktadresse for personvern. Settes i miljøvariabelen NEXT_PUBLIC_PRIVACY_CONTACT. */
-const contact = process.env.NEXT_PUBLIC_PRIVACY_CONTACT?.trim();
-const UPDATED = "16. november 2026";
+/** Kontaktadresse for personvern: NEXT_PUBLIC_PRIVACY_CONTACT, ellers support-adressen. */
+const contact = process.env.NEXT_PUBLIC_PRIVACY_CONTACT?.trim() || SUPPORT_EMAIL;
+const UPDATED = "23. november 2026";
 
 export default function PrivacyPage() {
   return (
@@ -37,6 +38,10 @@ export default function PrivacyPage() {
             <li>
               <strong>Varsler:</strong> varslene du får i appen, hvilket varslingsnivå du har valgt, og – hvis du slår på
               push-varsler – et teknisk token for nettleseren eller telefonen din.
+            </li>
+            <li>
+              <strong>Flokk Pluss:</strong> om du har Pluss, hvilken variant (måned, år eller livstid), når den
+              utløper og hvor den er kjøpt. Betalingen skjer hos Apple – vi får aldri kortopplysningene dine.
             </li>
             <li>
               <strong>«Inne nå»:</strong> mens du har en flokk åpen, ser andre medlemmer at du er inne. Dette lagres ikke.
@@ -73,6 +78,10 @@ export default function PrivacyPage() {
             <li>
               <strong>Apple (APNs) og Google (Firebase Cloud Messaging)</strong> – leverer push-varsler til telefoner.
               Nettleserens egen push-tjeneste brukes for varsler på nett. Varslene inneholder tittelen på det som skjedde.
+            </li>
+            <li>
+              <strong>Apple og RevenueCat</strong> – kjøp av Flokk Pluss i iPhone-appen går gjennom App Store. RevenueCat
+              holder rede på abonnementet på våre vegne og kjenner bare bruker-id-en din i Flokk og kjøpshistorikken.
             </li>
             <li>
               <strong>Kartverket</strong> – når du søker etter en adresse, sendes søketeksten til Kartverkets åpne
