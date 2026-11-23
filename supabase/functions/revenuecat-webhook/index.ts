@@ -127,6 +127,9 @@ Deno.serve(async (req) => {
     const secret = env("REVENUECAT_WEBHOOK_SECRET");
     if (secret && (authorization === secret || authorization === `Bearer ${secret}`)) {
       const e = (body.event ?? {}) as WebhookEvent;
+      // «Send test event» i RevenueCat har oppdiktede brukere – ikke slå dem opp (det ville
+      // opprettet falske kunder i RevenueCat). Svaret bekrefter at hemmeligheten stemmer.
+      if (e.type === "TEST") return json({ type: "TEST", ok: true });
       // Alle brukere hendelsen kan gjelde (overføring av kjøp gjelder to brukere).
       // Anonyme RevenueCat-id-er ($RCAnonymousID:…) er ikke Flokk-brukere og hoppes over.
       const ids = new Set(
